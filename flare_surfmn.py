@@ -5,6 +5,7 @@ from flare import model
 from flare.analysis import equi2d_rzarray, fluxsurf2d_parameters
 from flare.analysis import fourier_transform
 from scipy.interpolate import CubicSpline
+from scipy.interpolate import griddata
 
 def fluxsurf_params(n_max, m_max):
     """
@@ -25,6 +26,10 @@ def fluxsurf_params(n_max, m_max):
         Array of sorted q (safety factor) values including the resonant values.
     area : np.ndarray
         Array of sorted area (flux surface area) values including the resonant values.
+    psiN_res : np.ndarray
+        Array of resonant psiN values.
+    q_res : np.ndarray
+        Array of resonant q values.
     
     """
 
@@ -77,7 +82,7 @@ def fluxsurf_params(n_max, m_max):
     q = q[idx_psiN]
     area = area[idx_psiN]
 
-    return psiN, q, area
+    return psiN, q, area, psiN_res, q_res
 
 
 
@@ -118,7 +123,7 @@ def flare_surfmn(flare_model, n_tor, m_max, filename):
         raise ValueError(f"Failed to load flare model: {e}")
 
     # Build arrays
-    psiN_values, q_values, area_values = fluxsurf_params(n_tor, m_max)
+    psiN_values, q_values, area_values, psiN_res, q_res_values = fluxsurf_params(n_tor, m_max)
     m_values= np.arange(-(m_max + 1) + 1, (m_max + 1) + 1)
     db_matrix = np.zeros((len(psiN_values), len(m_values)))
 
@@ -134,12 +139,24 @@ def flare_surfmn(flare_model, n_tor, m_max, filename):
         db_matrix = db_matrix[:, :-1]
     except Exception as e:
         raise ValueError(f"Failed to compute Fourier coefficients: {e}")
+    
+
+    # Compute harmonic amplitude on resonant surfaces
+    print("Computing harmonic amplitudes on resonant surfaces...")
+    try:
+        m_res = q_res_values * n_tor
+        points = np.column_stack((m_mesh.flatten(), psiN_mesh.flatten()))
+        values = db_matrix.flatten()
+        interp_points = np.column_stack((m_res, psiN_res))
+        db_res = griddata(points, values, interp_points, method='cubic', fill_value=0)
+    except Exception as e:
+        raise ValueError(f"Failed to compute harmonic amplitudes on resonant surfaces: {e}")
 
 
     # Save data
     print("Saving data...")
     try:
-        np.savez(filename, n_tor=n_tor, psiN_values=psiN_values, m_values=m_values, m_mesh=m_mesh, psiN_mesh=psiN_mesh, db_matrix=db_matrix, q_vals=q_values)
+        np.savez(filename, n_tor=n_tor, psiN_values=psiN_values, m_values=m_values, m_mesh=m_mesh, psiN_mesh=psiN_mesh, db_matrix=db_matrix, q_vals=q_values, db_res=db_res, psiN_res=psiN_res, q_res=q_res_values)
         print(f"Data saved to {filename}.npz")
     except Exception as e:
             raise ValueError(f"Failed to save data: {e}")

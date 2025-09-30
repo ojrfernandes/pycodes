@@ -80,7 +80,7 @@ def phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, levels=1
     # Plotting
     plt.figure(figsize=figsize, dpi=dpi)
     plt.contourf(db_map, levels=levels, cmap=cmap)
-    plt.colorbar(label='$\delta B_{' + str(m_pol) + ' / ' + str(n_tor) + '} ( G / kA )$')
+    plt.colorbar(label='$\delta B_{' + str(np.abs(m_pol)) + ' / ' + str(n_tor) + '} ( G / kA )$')
     plt.xlabel(r'$\Delta\Phi_{IU}$ ( deg )')
     plt.ylabel(r'$\Delta\Phi_{IL}$ ( deg )')
 
