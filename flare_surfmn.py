@@ -2,19 +2,109 @@
 import argparse
 import numpy as np
 from flare import model
-from flare.analysis import equi2d_rzarray, fluxsurf2d_parameters
-from flare.analysis import fourier_transform
-from scipy.interpolate import CubicSpline
-from scipy.interpolate import griddata
+from scipy.interpolate import CubicSpline, griddata, RegularGridInterpolator
+from flare.analysis import equi2d_rzarray, fluxsurf2d_parameters, fourier_transform
 
-def fluxsurf_params(n_max, m_max):
+
+def flare_surfmn(flare_model, n_tor, m_max, filename):
+    """
+    Generate and save the surfmn data for a given FLARE model.
+
+    Parameters
+    ----------
+    flare_model : str
+        Path to the FLARE model file.
+    n_tor : int
+        Toroidal mode number.
+    m_max : int
+        Maximum poloidal mode number.
+    filename : str
+        Output filename for the data.
+
+    Returns
+    -------
+    None
+        Saves the surfmn data to a .npz file.
+
+    """
+
+    
+    # Load the model
+    print("Loading flare model...")
+    try:
+        model.load(flare_model)
+    except Exception as e:
+        raise ValueError(f"Failed to load flare model: {e}")
+
+    try:
+        status = "building flux surface parameters"
+        print("Building flux surface parameters...")
+        psiN_values, q_values, area_values, psiN_res, q_res_values = fluxsurf_params(n_tor, m_max)
+        m_values= np.arange(-(m_max + 1) + 1, (m_max + 1) + 1)
+        db_matrix = np.zeros((len(psiN_values), len(m_values)))
+
+        # Compute the Fourier coefficients
+        status = "computing fourier coefficients"
+        print("Computing Fourier coefficients...")
+        for i, psiN in enumerate(psiN_values):
+            db_spectrum = fourier_transform(psiN, n_tor, 2 * (m_max + 1))
+            db_matrix[i, :] = np.abs(db_spectrum) * area_values[i] * 1e4 # convert to G / kA
+
+        m_mesh, psiN_mesh = np.meshgrid(m_values, psiN_values)
+        m_mesh = m_mesh[:, :-1]
+        psiN_mesh = psiN_mesh[:, :-1]
+        db_matrix = db_matrix[:, :-1]
+        
+
+        # Compute harmonic amplitude on resonant surfaces
+        status = "computing harmonic amplitudes on resonant surfaces"
+        print("Computing harmonic amplitudes on resonant surfaces...")
+        m_res = q_res_values * n_tor
+        points = np.column_stack((m_mesh.flatten(), psiN_mesh.flatten()))
+        values = db_matrix.flatten()
+        interp_points = np.column_stack((m_res, psiN_res))
+        db_res = griddata(points, values, interp_points, method='cubic', fill_value=0)
+
+        # Save data
+        status = "saving data"
+        print("Saving data...")
+        if not filename.endswith(".npz"):
+                filename += ".npz"
+        np.savez(
+            filename,
+            n_tor=n_tor,
+            psiN_values=psiN_values,
+            m_values=m_values,
+            m_mesh=m_mesh,
+            psiN_mesh=psiN_mesh,
+            db_matrix=db_matrix,
+            q_vals=q_values,
+            db_res=db_res,
+            psiN_res=psiN_res,
+            q_res=q_res_values)
+        
+        print(f"Data saved to {filename}")
+    
+    except Exception as e:
+        raise ValueError(f"Failed on {status}: {e}")
+    
+    finally:
+        print("Freeing FLARE model from memory...")
+        model.free()
+    
+    
+    print("Done.")
+
+    
+
+def fluxsurf_params(n_tor, m_max):
     """
     Build the psiN (normalized poloidal flux), q (safety factor) and area (flux surface area) arrays including the resonant values.
 
     Parameters
     ----------
-    n_max : int
-        Maximum toroidal mode number.
+    n_tor : int
+        Toroidal mode number.
     m_max : int
         Maximum poloidal mode number.   
 
@@ -35,7 +125,7 @@ def fluxsurf_params(n_max, m_max):
 
 
     psiN_val = np.linspace(0.1, 0.9, 81)
-    psiN_ped = np.linspace(0.901, 1.0, 100) 
+    psiN_ped = np.linspace(0.901, 0.9999, 100) 
     psiN_values = np.concatenate((psiN_val, psiN_ped))
 
     theta = 0
@@ -44,19 +134,19 @@ def fluxsurf_params(n_max, m_max):
     flux_params = [fluxsurf2d_parameters((R, Z)) for R, Z in zip(R_vals, Z_vals)]
     q_vals = np.array([params[0] for params in flux_params])  # extract q values
     area_vals = np.array([params[2] for params in flux_params])  # extract area values
-    q_vals = q_vals[:-1] # remove last element
+    
+    # remove last element
+    q_vals = q_vals[:-1] 
     psiN_values = psiN_values[:-1]
     area_vals = area_vals[:-1]
 
     # array of sorted unique rational q values
-    q_res = np.array([])
-    for n in range (1, n_max + 1):
+    q_res = []
+    for n in range (1, n_tor + 1):
         for m in range (-m_max * n, m_max * n + 1):
             if m != 0:
-                q_res = np.append(q_res, m / n)
-
-    q_res.sort()
-    q_res = np.unique(q_res)
+                q_res.append(m / n)
+    q_res = np.unique(np.sort(q_res))
 
     q_res = q_res[(q_res >= np.min(q_vals)) & (q_res <= np.max(q_vals))]
 
@@ -84,87 +174,6 @@ def fluxsurf_params(n_max, m_max):
 
     return psiN, q, area, psiN_res, q_res
 
-
-
-def flare_surfmn(flare_model, n_tor, m_max, filename):
-    """
-    Generate and save the surfmn data for a given FLARE model.
-
-    Parameters
-    ----------
-    flare_model : str
-        Path to the FLARE model file.
-    n_tor : int
-        Toroidal mode number.
-    m_max : int
-        Maximum poloidal mode number.
-    filename : str
-        Output filename for the data.
-    n_psi : int
-        Number of psi points. Default is 100.
-    psiN_min : float
-        Minimum psiN value. Default is 0.1.
-    psiN_max : float
-        Maximum psiN value. Default is 1.0.
-
-    Returns
-    -------
-    None
-        Saves the surfmn data to a .npz file.
-
-    """
-
-
-    # Load the model
-    print("Loading flare model...")
-    try:
-        model.load(flare_model)
-    except Exception as e:
-        raise ValueError(f"Failed to load flare model: {e}")
-
-    # Build arrays
-    psiN_values, q_values, area_values, psiN_res, q_res_values = fluxsurf_params(n_tor, m_max)
-    m_values= np.arange(-(m_max + 1) + 1, (m_max + 1) + 1)
-    db_matrix = np.zeros((len(psiN_values), len(m_values)))
-
-    # Compute the Fourier coefficients
-    print("Computing Fourier coefficients...")
-    try:
-        for i, psiN in enumerate(psiN_values):
-            db_spectrum = fourier_transform(psiN, n_tor, 2 * (m_max + 1))
-            db_matrix[i, :] = np.abs(db_spectrum) * area_values[i] * 1e4 # convert to G / kA
-        m_mesh, psiN_mesh = np.meshgrid(m_values, psiN_values)
-        m_mesh = m_mesh[:, :-1]
-        psiN_mesh = psiN_mesh[:, :-1]
-        db_matrix = db_matrix[:, :-1]
-    except Exception as e:
-        raise ValueError(f"Failed to compute Fourier coefficients: {e}")
-    
-
-    # Compute harmonic amplitude on resonant surfaces
-    print("Computing harmonic amplitudes on resonant surfaces...")
-    try:
-        m_res = q_res_values * n_tor
-        points = np.column_stack((m_mesh.flatten(), psiN_mesh.flatten()))
-        values = db_matrix.flatten()
-        interp_points = np.column_stack((m_res, psiN_res))
-        db_res = griddata(points, values, interp_points, method='cubic', fill_value=0)
-    except Exception as e:
-        raise ValueError(f"Failed to compute harmonic amplitudes on resonant surfaces: {e}")
-
-
-    # Save data
-    print("Saving data...")
-    try:
-        np.savez(filename, n_tor=n_tor, psiN_values=psiN_values, m_values=m_values, m_mesh=m_mesh, psiN_mesh=psiN_mesh, db_matrix=db_matrix, q_vals=q_values, db_res=db_res, psiN_res=psiN_res, q_res=q_res_values)
-        print(f"Data saved to {filename}.npz")
-    except Exception as e:
-            raise ValueError(f"Failed to save data: {e}")
-    
-    # Free memory
-    print("Freeing memory...")
-    model.free()
-    print("Done.")
 
 
 if __name__ == "__main__":

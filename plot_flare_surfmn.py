@@ -29,15 +29,17 @@ def plot_flare_surfmn(data, res_line=True, figsize=(7,5), dpi=100, levels=100, c
         
     """
     # Load data
-    print("Loading surfmn data from {}...".format(data))
+    print(f"Loading surfmn data from {data}...")
     try:
         with np.load(data) as f:
-            n_tor = f['n_tor']
+            n_tor = int(f['n_tor'])
             psiN_values = f['psiN_values']
             m_mesh = f['m_mesh']
             psiN_mesh = f['psiN_mesh']
             db_matrix = f['db_matrix']
             q_vals = f['q_vals']
+    except KeyError as e:
+        raise ValueError(f"Missing expected data in the file: {e}")
     except Exception as e:
         raise ValueError(f"Failed to load surfmn data: {e}")
     print("Data loaded successfully.")
@@ -58,18 +60,20 @@ def plot_flare_surfmn(data, res_line=True, figsize=(7,5), dpi=100, levels=100, c
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot FLARE surfmn spectra.")
     parser.add_argument("data", type=str, help="Path to the surfmn data file")
-    parser.add_argument("--res_line", type=bool, default=True, help="Enable resonance line")
-    parser.add_argument("--figsize", type=float, nargs=2, default=(7, 5), help="Figure size (width, height)")
+    parser.add_argument("--no-res-line", action="store_false", dest="res_line",
+                        help="Disable resonance line plotting")
+    parser.add_argument("--figsize", type=float, nargs=2, default=(7, 5),
+                        help="Figure size (width height)")
     parser.add_argument("--dpi", type=int, default=100, help="DPI for the figure")
     parser.add_argument("--levels", type=int, default=100, help="Number of contour levels")
-    parser.add_argument("--cmap", type=str, default='jet', help="Colormap to use")
-    args = parser.parse_args()
+    parser.add_argument("--cmap", type=str, default="jet", help="Colormap to use")
 
+    args = parser.parse_args()
     plot_flare_surfmn(
         data=args.data,
         res_line=args.res_line,
         figsize=args.figsize,
         dpi=args.dpi,
         levels=args.levels,
-        cmap=args.cmap
+        cmap=args.cmap,
     )
