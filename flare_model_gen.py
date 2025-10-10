@@ -1,0 +1,177 @@
+#!/home/jfernandes/.venv/bin/python
+import argparse
+import os
+import numpy as np
+
+def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=None, amplitudes=[1.0,1.0,1.0], phase_signal=[-1,1]):
+    """
+    Generate flare model files for different phase combinations of IL and IU sets.
+
+    Parameters
+    ----------
+    coils : str
+        Type of coils to use. Options are 'I' or 'CP'.
+    directory : str
+        Path to the directory where the model files will be saved.
+    n_tor : int
+        Toroidal mode number.
+    d_phase : float
+        Phase difference increment in degrees.
+    sets : str
+        Path to the directory containing IM, IL, IU sets.
+    timeslice : int
+        Time slice to use from the M3D-C1 data.
+    boundary : str
+        Path to the boundary file. Default is tcabr_first_wall.txt.
+    amplitudes : list of float
+        Amplitudes for L, M, U sets respectively. Default is [1.0, 1.0, 1.0].
+    phase_signal : list of int
+        Phase signal for L and U sets respectively. Default is [-1, 1].
+    
+    Returns
+    -------
+    None
+        Creates directories and model files for each phase combination.
+    """
+
+    if boundary is None:
+        boundary = "/home/jfernandes/machines_geo/input_geo/tcabr_first_wall.txt"
+
+    n_models = int((360 / n_tor / d_phase) + 1)
+
+    #check if directory and sets end in '/'
+    if not directory.endswith('/'):
+        directory += '/'
+    if not sets.endswith('/'):
+        sets += '/'
+
+    #check if directory exists
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    if coils not in ['I', 'CP']:
+        raise ValueError("Invalid coils type. Options are 'I' or 'CP'.")
+    if coils == 'I':
+        for i in range(n_models):
+            for j in range(n_models):
+                phase_IL = int(i * d_phase * phase_signal[0])
+                phase_IU = int(j * d_phase * phase_signal[1])
+                new_dir = f'{directory}dephase_IL_{np.abs(phase_IL):03d}_IU_{np.abs(phase_IU):03d}/'
+
+                if not os.path.exists(new_dir):
+                    os.makedirs(new_dir)
+                else:
+                    print(f'Directory {new_dir} already exists. Skipping...')
+                    continue
+
+                with open(f'{new_dir}.boundary', 'w') as file:
+                    file.write(
+                    '[axisurf]\n' \
+                    f'filename: {boundary}\n' \
+                    'units: m')
+
+                with open(f'{new_dir}.bfield', 'w') as file:
+                    file.write(
+                    '[equi2d_m3dc1]\n' \
+                    f'filename: {sets}IM_set/C1.h5\n' \
+
+                    '\n' \
+                    
+                    '[IL_set:m3dc1]\n' \
+                    f'filename:   {sets}IL_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[0]}\n' \
+                    f'phase:      {phase_IL}\n' \
+                    
+                    '\n' \
+                    
+                    '[IM_set:m3dc1]\n' \
+                    f'filename:   {sets}IM_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[1]}\n' \
+                    f'phase:      0.0\n' \
+                    
+                    '\n' \
+                    
+                    '[IU_set:m3dc1]\n' \
+                    f'filename:   {sets}IU_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[2]}\n' \
+                    f'phase:      {phase_IU}\n' \
+                    )
+    if coils == 'CP':
+        for i in range(n_models):
+            for j in range(n_models):
+                phase_CPL = int(i * d_phase * phase_signal[0])
+                phase_CPU = int(j * d_phase * phase_signal[1])
+                new_dir = f'{directory}dephase_CPL_{np.abs(phase_CPL):03d}_CPU_{np.abs(phase_CPU):03d}/'
+
+                if not os.path.exists(new_dir):
+                    os.makedirs(new_dir)
+                else:
+                    print(f'Directory {new_dir} already exists. Skipping...')
+                    continue
+
+                with open(f'{new_dir}.boundary', 'w') as file:
+                    file.write(
+                    '[axisurf]\n' \
+                    f'filename: {boundary}\n' \
+                    'units: m')
+
+                with open(f'{new_dir}.bfield', 'w') as file:
+                    file.write(
+                    '[equi2d_m3dc1]\n' \
+                    f'filename: {sets}CPM_set/C1.h5\n' \
+
+                    '\n' \
+                    
+                    '[CPL_set:m3dc1]\n' \
+                    f'filename:   {sets}CPL_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[0]}\n' \
+                    f'phase:      {phase_CPL}\n' \
+
+                    '\n' \
+                    
+                    '[CPM_set:m3dc1]\n' \
+                    f'filename:   {sets}CPM_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[1]}\n' \
+                    f'phase:      0.0\n' \
+                    
+                    '\n' \
+                    
+                    '[CPU_set:m3dc1]\n' \
+                    f'filename:   {sets}CPU_set/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[2]}\n' \
+                    f'phase:      {phase_CPU}\n' \
+                    )
+        
+    print(f'Successfully created model files in {directory}')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Generate flare model files for different phase combinations.')
+    parser.add_argument('coils', type=str, help="Type of coils to use. Options are 'I' or 'CP'.")
+    parser.add_argument('directory', type=str, help='Directory to save the generated model files.')
+    parser.add_argument('n_tor', type=int, help='Toroidal mode number.')
+    parser.add_argument('d_phase', type=float, help='Phase difference increment in degrees.')
+    parser.add_argument('sets', type=str, help='Path to the directory containing IM, IL, IU sets.')
+    parser.add_argument('timeslice', type=int, help='Time slice to use from the M3D-C1 data.')
+    parser.add_argument('--boundary', type=str, default=None, help='Path to the boundary file. Default is tcabr_first_wall.txt')
+    parser.add_argument('--amplitudes', type=float, nargs=3, default=[1.0, 1.0, 1.0], help='Amplitudes for IL, IM, IU sets respectively. Default is [1.0, 1.0, 1.0]')
+    parser.add_argument('--phase_signal', type=int, nargs=2, default=[-1, 1], help='Phase signal for IL and IU sets respectively. Default is [-1, 1]')
+
+    args = parser.parse_args()
+
+    flare_model_gen(
+        args.coils,
+        args.directory,
+        args.n_tor,
+        args.d_phase,
+        args.sets,
+        args.timeslice,
+        boundary=args.boundary,
+        amplitudes=args.amplitudes,
+        phase_signal=args.phase_signal)
