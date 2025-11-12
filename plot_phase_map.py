@@ -44,9 +44,9 @@ def plot_phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, lev
 
     # Loop over all combinations of phase differences
     for i in range(n_elements):
-        phase_L = i * d_phase
+        phase_L = int(i * d_phase)
         for j in range(n_elements):
-            phase_U = j * d_phase
+            phase_U = int(j * d_phase)
             file_IL = os.path.join(directory, f'dephase_IL_{phase_L:03d}_IU_{phase_U:03d}.npz')
             file_CP = os.path.join(directory, f'dephase_CPL_{phase_L:03d}_CPU_{phase_U:03d}.npz')
 
@@ -98,8 +98,8 @@ def plot_phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, lev
 
     # Plotting
     plt.figure(figsize=figsize, dpi=dpi)
-    plt.contourf(db_map, levels=levels, cmap=cmap)
-    plt.colorbar(label='$\delta B_{' + str(np.abs(m_pol)) + ' / ' + str(n_tor) + '}$ ( G / kA )')
+    contour = plt.contourf(db_map, levels=levels, cmap=cmap)
+    plt.colorbar(contour, label='$\delta B_{' + str(np.abs(m_pol)) + ' / ' + str(n_tor) + '}$ ( G / kA )')
     if coil == 0:
         plt.xlabel(r'$\Delta\Phi_{IU}$ ( deg )')
         plt.ylabel(r'$\Delta\Phi_{IL}$ ( deg )')
@@ -113,10 +113,10 @@ def plot_phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, lev
     else:
         ticks = np.arange(0, n_elements, n_elements // 9 + 1)
 
-    tick_labels = ticks * d_phase 
+    tick_labels = ticks * d_phase
 
-    plt.xticks(ticks, tick_labels * phase_signal[1])
-    plt.yticks(ticks, tick_labels * phase_signal[0])
+    plt.xticks(ticks, (tick_labels * phase_signal[1]).astype(int))
+    plt.yticks(ticks, (tick_labels * phase_signal[0]).astype(int))
 
     plt.show()
 

@@ -4,12 +4,12 @@ import argparse
 import sys
 import subprocess
 import signal  
-from io import StringIO
-from flare_surfmn import flare_surfmn
+# from io import StringIO
+# from flare_surfmn import flare_surfmn
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
-def flare_phase_map(model_path, save_to_path, ntor, m_max, d_phase, nprocs=1):
+def flare_phase_map(model_path, save_to_path, ntor, m_max, d_phase=10, nprocs=1):
 
     n_elements = int((360 / ntor / d_phase) + 1)
 
@@ -54,22 +54,22 @@ def _process_phase_pair(args):
     """
     model_path, save_to_path, ntor, m_max, phase_L, phase_U = args
 
-    file_I = os.path.join(model_path, f'dephase_IL_{phase_L:03d}_IU_{phase_U:03d}')
-    file_CP = os.path.join(model_path, f'dephase_CPL_{phase_L:03d}_CPU_{phase_U:03d}')  
+    file_I = os.path.join(model_path, f'dephase_IL_{int(phase_L):03d}_IU_{int(phase_U):03d}')
+    file_CP = os.path.join(model_path, f'dephase_CPL_{int(phase_L):03d}_CPU_{int(phase_U):03d}')  
 
     if os.path.exists(file_I):
         flare_model = file_I
-        filename = os.path.join(save_to_path, f'dephase_IL_{phase_L:03d}_IU_{phase_U:03d}.npz')
+        filename = os.path.join(save_to_path, f'dephase_IL_{int(phase_L):03d}_IU_{int(phase_U):03d}.npz')
     elif os.path.exists(file_CP):
         flare_model = file_CP
-        filename = os.path.join(save_to_path, f'dephase_CPL_{phase_L:03d}_CPU_{phase_U:03d}.npz')
+        filename = os.path.join(save_to_path, f'dephase_CPL_{int(phase_L):03d}_CPU_{int(phase_U):03d}.npz')
     else:
         print(f"No valid file found for phases {phase_L}, {phase_U}")
         return
 
     print(f"\n-> Evaluating model {flare_model}")
 
-    log_file = os.path.join(save_to_path, f"logs/log_{phase_L:03d}_{phase_U:03d}.txt")
+    log_file = os.path.join(save_to_path, f"logs/log_{int(phase_L):03d}_{int(phase_U):03d}.txt")
 
     # Run flare_surfmn in a subprocess so Fortran prints log into a file
     cmd = [
@@ -108,30 +108,3 @@ if __name__ == "__main__":
         args.d_phase,
         args.nprocs
     )
-
-# def flare_phase_map(model_path, save_to_path, ntor, m_max, d_phase):
-
-#     n_elements = int((360 / ntor / d_phase) + 1)
-
-#     #check if save_to_path exists. If not, create it.
-#     if not os.path.exists(save_to_path):
-#         os.makedirs(save_to_path)
-    
-#     for i in range(n_elements):
-#         phase_L = i * d_phase
-#         for j in range(n_elements):
-#             phase_U = j * d_phase
-#             file_ILIU = os.path.join(model_path, f'dephase_IL_{phase_L:03d}_IU_{phase_U:03d}.npz')
-#             file_CPLCPU = os.path.join(model_path, f'dephase_CPL_{phase_L:03d}_CPU_{phase_U:03d}.npz')
-
-#             if os.path.exists(file_ILIU):
-#                 flare_model = file_ILIU
-#                 filename = os.path.join(save_to_path, f'dephase_IL_{phase_L:03d}_IU_{phase_U:03d}.npz')
-#             elif os.path.exists(file_CPLCPU):
-#                 flare_model = file_CPLCPU
-#                 filename = os.path.join(save_to_path, f'dephase_CPL_{phase_L:03d}_CPU_{phase_U:03d}.npz')
-#             else:
-#                 raise FileNotFoundError(f"No valid flare model found for phases {phase_L}, {phase_U}")
-
-#             print(f"\nEvaluating model {flare_model}\n")
-#             flare_surfmn(flare_model, ntor, m_max, filename)
