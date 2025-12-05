@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_mf(sfile=None, ufile=None, wall=None, linestyle="line", wu_cut=None, ws_cut=None, figsize=(7, 15), dpi=80, sizef=1, linewidth=2, scatter_size=5, xlim=None, zlim=None):
+def plot_mf(sfile=None, ufile=None, wall=None, linestyle="line", wu_cut=None, ws_cut=None, figsize=(7, 10), dpi=80, sizef=1, linewidth=2, scatter_size=5, xlim=None, zlim=None):
 
     """
     Function to plot the manifolds evaliated by the maglib code fpgen.
@@ -56,9 +56,9 @@ def plot_mf(sfile=None, ufile=None, wall=None, linestyle="line", wu_cut=None, ws
     if ufile is not None:
         data_U = np.loadtxt(ufile)
         if wu_cut is not None:
-            data_U = data_U[:ws_cut]
-        R_U = data_U[:ws_cut,0]
-        Z_U = data_U[:ws_cut,1]
+            data_U = data_U[:wu_cut]
+        R_U = data_U[:wu_cut,0]
+        Z_U = data_U[:wu_cut,1]
 
     #load wall
     if wall is not None:
