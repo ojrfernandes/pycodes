@@ -7,7 +7,7 @@ from matplotlib.colors import LogNorm
 from matplotlib.ticker import FuncFormatter
 
 
-def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_f=6, v_min=None, v_max=None, savefig=None):
+def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_f=6, v_min=None, v_max=None, turn_cap=None , savefig=None):
     """
     Function to plot footprints evaluated by the maglib code fpgen.
     
@@ -18,7 +18,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
     plate : str
         Divertor plate: "h" for horizontal (floor) or "v" for vertical (wall). Default is None.
     which_plot : str
-        Type of plot to generate: "cl" (connection length), "psi" (psi min), or "au" (arbitrary units), "all". Default is "all".
+        Type of plot to generate: "cl" (connection length), "psi" (psi min), "turns" (number of toroidalturns) or "au" (arbitrary units), "all". Default is "all".
     xaxis : str
         Type of x-axis: "rad" for radians or "deg" for degrees. Default is "rad".
     cmap : str
@@ -37,6 +37,8 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         Minimum value for the normalized colormap in arbitrary units. Default is None.
     v_max : float
         Maximum value for the normalized colormap in arbitrary units. Default is None.
+    turn_cap : tuple
+        Interval to cap the color scale for the number of toroidal turns plot. Default is None.
     savefig : str
         Path to save the figure(s). If None, figure(s) will not be saved. Default is None.
 
@@ -75,12 +77,14 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
 
     z_cl = data[:, 3] #connection length
     z_psi = data[:, 4] #psin
+    z_turns = data[:, 5] #number of turns
 
     # Determine the grid size
     num_rows = int(len(np.unique(x))) # Number of rows
     num_columns = int(len(data)/num_rows) # Number of columns
     z_cl = np.reshape(z_cl, (num_rows, num_columns)).transpose() # z column to matrix
     z_psi = np.reshape(z_psi, (num_rows, num_columns)).transpose() # z column to matrix
+    z_turns = np.reshape(z_turns, (num_rows, num_columns)).transpose() # z column to matrix
 
     # Custom x-axis formatter: convert degrees to radians
     def degrees_to_radians(x, pos):
@@ -95,8 +99,8 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
     cmap_cap.set_under("white")
     cmap_f.set_under("white")
 
-    if which_plot not in ["cl", "psi", "au", "all"]:
-        raise ValueError("Invalid plot type. Use 'cl' for connection length, 'psi' for psi min, 'au' for arbitrary units, or 'all'.")
+    if which_plot not in ["cl", "psi", "turns", "au", "all"]:
+        raise ValueError("Invalid plot type. Use 'cl' for connection length, 'psi' for psi min, 'turns' for number of turns, 'au' for arbitrary units, or 'all'.")
 
     #### Connection Length plot ####
     if which_plot == "all" or which_plot == "cl":
@@ -148,6 +152,31 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         plt.show(block=False)
 
 
+    #### number of turns plot ####
+    if which_plot == "all" or which_plot == "turns":
+        fsize=(figsize[0]*sizef, figsize[1]*sizef)
+        plt.figure(figsize=fsize, dpi=dpi)
+        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0], vmax=turn_cap[1])
+        plt.colorbar().set_label("toroidal turns")
+        if xaxis == "rad":
+            plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
+            plt.xlabel("$\phi$ ( rad )")
+        elif xaxis == "deg":
+            plt.xlabel("$\phi$ ( deg )")
+            pass
+        else:
+            raise ValueError("Invalid x-axis type. Use 'rad' for radians or 'deg' for degrees.")
+        plt.ylabel("$R$ ( m )")
+
+        # Save figure if savefig is provided
+        if savefig is not None:
+            plt.savefig(f'{savefig}_turns.png', dpi=dpi, bbox_inches='tight')
+            print(f"Figure saved as {savefig}_turns.png")
+
+        # Show plot
+        plt.show(block=False)
+
+
     #### arbitrary units plot ####
     if which_plot == "all" or which_plot == "au":
 
@@ -190,7 +219,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot footprints from fpgen output file.")
     parser.add_argument("filename", type=str, help="Path to the fpgen output file.")
     parser.add_argument("plate", type=str, choices=["h", "v"], help="Divertor plate: 'h' for horizontal (floor) or 'v' for vertical (wall).")
-    parser.add_argument("--which_plot", type=str, default="all", choices=["cl", "psi", "au", "all"], help="Type of plot to generate: 'cl', 'psi', 'au', or 'all'. Default is 'all'.")
+    parser.add_argument("--which_plot", type=str, default="all", choices=["cl", "psi", "turns", "au", "all"], help="Type of plot to generate: 'cl', 'psi', 'turns', 'au', or 'all'. Default is 'all'.")
     parser.add_argument("--xaxis", type=str, default="rad", choices=["rad", "deg"], help="Type of x-axis: 'rad' for radians or 'deg' for degrees. Default is 'rad'.")
     parser.add_argument("--cmap", type=str, default="jet", help="Colormap to use for the plots. Default is 'jet'.")
     parser.add_argument("--cmap_key", type=int, default=10, help="Number of colors in the discretized version of the colormap. Default is 10.")
@@ -200,6 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--norm_f", type=float, default=6, help="Normalization factor for the arbitrary units plot. Default is 6.")
     parser.add_argument("--v_min", type=float, default=None, help="Minimum value for the normalized colormap in arbitrary units. Default is None.")
     parser.add_argument("--v_max", type=float, default=None, help="Maximum value for the normalized colormap in arbitrary units. Default is None.")
+    parser.add_argument("--turn_cap", type=int, nargs=2, default=None, help="Interval to cap the color scale for the number of toroidal turns plot. Default is None.")
     parser.add_argument("--savefig", type=str, default=None, help="Path to save the figure(s). If None, figure(s) will not be saved. Default is None.")
 
     args = parser.parse_args()
@@ -217,5 +247,6 @@ if __name__ == "__main__":
         norm_f=args.norm_f,
         v_min=args.v_min,
         v_max=args.v_max,
+        turn_cap=args.turn_cap,
         savefig=args.savefig
     )
