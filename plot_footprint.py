@@ -156,7 +156,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
     if which_plot == "all" or which_plot == "turns":
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0], vmax=turn_cap[1])
+        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0] if turn_cap is not None else None, vmax=turn_cap[1] if turn_cap is not None else None)
         plt.colorbar().set_label("toroidal turns")
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))

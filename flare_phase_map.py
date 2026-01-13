@@ -4,12 +4,33 @@ import argparse
 import sys
 import subprocess
 import signal  
-# from io import StringIO
-# from flare_surfmn import flare_surfmn
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 def flare_phase_map(model_path, save_to_path, ntor, m_max, d_phase=10, nprocs=1):
+    """
+    Run flare_surfmn over a grid of phase_L and phase_U values to generate a phase map.
+
+    Parameters
+    ----------
+    model_path : str
+        Path to the directory containing flare model files.
+    save_to_path : str
+        Directory to save the output .npz files.
+    ntor : int
+        Toroidal mode number.
+    m_max : int
+        Maximum mapped poloidal mode number.
+    d_phase : int
+        Phase step in degrees. Default is 10.
+    nprocs : int
+        Number of parallel processes. Default is 1.
+
+    Returns
+    -------
+    None
+        Saves surfmn data in .npz files in the specified directory.
+    """
 
     n_elements = int((360 / ntor / d_phase) + 1)
 

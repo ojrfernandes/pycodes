@@ -3,7 +3,7 @@ import argparse
 import os
 import numpy as np
 
-def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=None, amplitudes=[1.0,1.0,1.0], flare_phase=False, phase_signal=[-1,1]):
+def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=None, amplitudes=[1.0,1.0,1.0], flare_phase=True, phase_signal=[-1,1]):
     """
     Generate flare model files for different phase combinations of IL and IU sets.
 
@@ -26,7 +26,7 @@ def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=
     amplitudes : list of float
         Amplitudes for L, M, U sets respectively. Default is [1.0, 1.0, 1.0].
     flare_phase : bool
-        If True, use phase 000 simulations and adjust phase in FLARE post-processing. Default is False.
+        If True, use phase 000 simulations and adjust phase in FLARE post-processing. Default is True.
     phase_signal : list of int
         (only applies if flare_phase is True)
         Phase signal for L and U sets respectively. Default is [-1, 1].
