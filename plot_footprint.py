@@ -7,7 +7,7 @@ from matplotlib.colors import LogNorm
 from matplotlib.ticker import FuncFormatter
 
 
-def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_f=6, v_min=None, v_max=None, turn_cap=None , savefig=None):
+def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_f=6, v_min=None, v_max=None, turn_cap=None, savefig=None):
     """
     Function to plot footprints evaluated by the maglib code fpgen.
     
@@ -15,8 +15,6 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
     ----------
     filename : str
         Path to the file containing the data. Default is None.
-    plate : str
-        Divertor plate: "h" for horizontal (floor) or "v" for vertical (wall). Default is None.
     which_plot : str
         Type of plot to generate: "cl" (connection length), "psi" (psi min), "turns" (number of toroidalturns) or "au" (arbitrary units), "all". Default is "all".
     xaxis : str
@@ -51,9 +49,20 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
 
 
     # Load data
+    print(f"\nLoading data from {filename}...")
     if filename is None:
         raise ValueError("Filename cannot be None. Please provide a valid file path.")
     data = np.loadtxt(filename)
+
+    # Determine divertor plate
+    if np.unique(data[:, 0]).size == 1:
+        plate = "v"  # vertical plate
+        print("Vertical plate detected based on (R,Z) values.\n")
+        ylabel = "$Z$ ( m )"
+    else:
+        plate = "h"  # horizontal plate
+        print("Horizontal plate detected based on (R,Z) values.\n")
+        ylabel = "$R$ ( m )"
 
     # Extract relevant columns
     x = data[:, 2] #phi
@@ -61,8 +70,6 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         y = data[:, 0] #r
     elif plate == "v":
         y = data[:, 1] #z
-    else:
-        raise ValueError("Invalid plate type. Use 'h' for horizontal or 'v' for vertical.")
 
     # Sort data by phi then by y (R or Z)
     sort_idx = np.lexsort((y, x))
@@ -80,11 +87,13 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
     z_turns = data[:, 5] #number of turns
 
     # Determine the grid size
-    num_rows = int(len(np.unique(x))) # Number of rows
-    num_columns = int(len(data)/num_rows) # Number of columns
-    z_cl = np.reshape(z_cl, (num_rows, num_columns)).transpose() # z column to matrix
-    z_psi = np.reshape(z_psi, (num_rows, num_columns)).transpose() # z column to matrix
-    z_turns = np.reshape(z_turns, (num_rows, num_columns)).transpose() # z column to matrix
+    num_rows = int(len(np.unique(x))) 
+    num_columns = int(len(data)/num_rows)
+
+    # Reshape z data into matrices
+    z_cl = np.reshape(z_cl, (num_rows, num_columns)).transpose() 
+    z_psi = np.reshape(z_psi, (num_rows, num_columns)).transpose() 
+    z_turns = np.reshape(z_turns, (num_rows, num_columns)).transpose() 
 
     # Custom x-axis formatter: convert degrees to radians
     def degrees_to_radians(x, pos):
@@ -92,10 +101,8 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         return f"{radians:.1f}" if radians > 0 else "0"
 
     # Custom colormap
-    cmap_cap = mpl.cm.get_cmap(cmap).copy()
-    cmap_f = mpl.cm.get_cmap(cmap,cmap_key).copy()
-
-    # Modify colormap to set under values to white
+    cmap_cap = mpl.colormaps.get_cmap(cmap)
+    cmap_f = mpl.colormaps.get_cmap(cmap).resampled(cmap_key)
     cmap_cap.set_under("white")
     cmap_f.set_under("white")
 
@@ -116,7 +123,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
             pass
         else:
             raise ValueError("Invalid x-axis type. Use 'rad' for radians or 'deg' for degrees.")
-        plt.ylabel("$R$ ( m )")
+        plt.ylabel(ylabel)
 
         # Save figure if savefig is provided
         if savefig is not None:
@@ -141,7 +148,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
             pass
         else:
             raise ValueError("Invalid x-axis type. Use 'rad' for radians or 'deg' for degrees.")
-        plt.ylabel("$R$ ( m )")
+        plt.ylabel(ylabel)
 
         # Save figure if savefig is provided
         if savefig is not None:
@@ -152,11 +159,11 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         plt.show(block=False)
 
 
-    #### number of turns plot ####
+    #### Number of turns plot ####
     if which_plot == "all" or which_plot == "turns":
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0] if turn_cap is not None else None, vmax=turn_cap[1] if turn_cap is not None else None)
+        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0] if turn_cap is not None else None, vmax=turn_cap[1] if turn_cap is not None else None, norm=LogNorm() if turn_cap is None else None)
         plt.colorbar().set_label("toroidal turns")
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
@@ -166,7 +173,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
             pass
         else:
             raise ValueError("Invalid x-axis type. Use 'rad' for radians or 'deg' for degrees.")
-        plt.ylabel("$R$ ( m )")
+        plt.ylabel(ylabel)
 
         # Save figure if savefig is provided
         if savefig is not None:
@@ -177,7 +184,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
         plt.show(block=False)
 
 
-    #### arbitrary units plot ####
+    #### Arbitrary units plot ####
     if which_plot == "all" or which_plot == "au":
 
         # Check if v_min and v_max are provided
@@ -204,7 +211,7 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
             pass
         else:
             raise ValueError("Invalid x-axis type. Use 'rad' for radians or 'deg' for degrees.")
-        plt.ylabel("$R$ ( m )")
+        plt.ylabel(ylabel)
 
         # Save figure if savefig is provided
         if savefig is not None:
@@ -218,7 +225,6 @@ def plot_footprint(filename=None, plate=None, which_plot="all", xaxis="rad", cma
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot footprints from fpgen output file.")
     parser.add_argument("filename", type=str, help="Path to the fpgen output file.")
-    parser.add_argument("plate", type=str, choices=["h", "v"], help="Divertor plate: 'h' for horizontal (floor) or 'v' for vertical (wall).")
     parser.add_argument("--which_plot", type=str, default="all", choices=["cl", "psi", "turns", "au", "all"], help="Type of plot to generate: 'cl', 'psi', 'turns', 'au', or 'all'. Default is 'all'.")
     parser.add_argument("--xaxis", type=str, default="rad", choices=["rad", "deg"], help="Type of x-axis: 'rad' for radians or 'deg' for degrees. Default is 'rad'.")
     parser.add_argument("--cmap", type=str, default="jet", help="Colormap to use for the plots. Default is 'jet'.")
@@ -236,7 +242,6 @@ if __name__ == "__main__":
 
     plot_footprint(
         filename=args.filename,
-        plate=args.plate,
         which_plot=args.which_plot,
         xaxis=args.xaxis,
         cmap=args.cmap,
