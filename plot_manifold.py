@@ -3,28 +3,26 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_mf(sfile=None, ufile=None, wall=None, linestyle="line", wu_cut=None, ws_cut=None, figsize=(7, 10), dpi=80, sizef=1, linewidth=2, scatter_size=5, xlim=None, zlim=None):
+def plot_mf(files, cuts=None, labels=None, wall = None, linestyle="line", figsize=(5, 8), dpi=80, sizef=1, linewidth=2, scatter_size=5, xlim=None, zlim=None):
 
     """
     Function to plot the manifolds evaliated by the maglib code fpgen.
     
     Parameters
     ----------
-    sfile : str
-        Path to the file containing the stable manifold data. If none is provided, no stable manifold will be plotted.
-    ufile : str
-        Path to the file containing the unstable manifold data.
-        If none is provided, no unstable manifold will be plotted.
+    files : list of str
+        List of paths to the files containing the manifold data. 
+    cuts : list of int
+        List of integers to limit the number of points imported from each manifold. Set the integer to 0 to import the whole file. If no list is provided, all integers will be set to 0. Default is None.
+        Example: cuts = [100, 200] will import the first 100 points from the first file and the first 200 points from the second file. cuts = [-100, -200] will import all points except the last 100 from the first file and all points except the last 200 from the second file.
+    labels : list of str
+        List of labels for the plots. Default is None.
     wall : str
         Path to the file containing the wall data. If none is provided, no wall will be plotted.
     linestyle : str
         Type of line style for the plot: "line", "scatter", or "both". Default is "line".
-    wu_cut : int
-        Limit the number of points imported from the unstable manifold file. Default is None (impoer the whole file).
-    ws_cut : int
-        Limit the number of points imported from the stable manifold file. Default is None (impoer the whole file).
     figsize : tuple
-        Size of the figure in inches. Default is (7, 15).
+        Size of the figure in inches. Default is (5, 8).
     dpi : int
         Dots per inch for the figure. Default is 80 (default is low for better performance).
     sizef : float
@@ -45,60 +43,79 @@ def plot_mf(sfile=None, ufile=None, wall=None, linestyle="line", wu_cut=None, ws
 
     """
 
-    #load data
-    if sfile is not None:
-        data_S = np.loadtxt(sfile)
-        if ws_cut is not None:
-            data_S = data_S[:]
-        R_S = data_S[:ws_cut,0]
-        Z_S = data_S[:ws_cut,1]
-
-    if ufile is not None:
-        data_U = np.loadtxt(ufile)
-        if wu_cut is not None:
-            data_U = data_U[:wu_cut]
-        R_U = data_U[:wu_cut,0]
-        Z_U = data_U[:wu_cut,1]
-
-    #load wall
-    if wall is not None:
-        data_W = np.loadtxt(wall)
-        R_wall = data_W[:,0]
-        Z_wall = data_W[:,1]
+    cuts, labels = _validate_entries(files, cuts, labels, linestyle)
 
     plt.figure(figsize=(figsize[0]*sizef, figsize[1]*sizef), dpi=dpi)
     plt.gca().set_aspect('equal', adjustable='box')
-    if wall:
-        plt.plot(R_wall,Z_wall, color="black")
-    if sfile is not None:
-        if linestyle == "line" or linestyle == "both":
-            plt.plot(R_S,Z_S, label="Stable manifold", linewidth=linewidth)
-        if linestyle == "scatter" or linestyle == "both":
-            plt.scatter(R_S, Z_S, s = scatter_size, label="Stable manifold")
-    if ufile is not None:
-        if linestyle == "line" or linestyle == "both":
-            plt.plot(R_U,Z_U, label="Unstable manifold", linewidth=linewidth)
-        if linestyle == "scatter" or linestyle == "both":
-            plt.scatter(R_U, Z_U, s = scatter_size, label="Unstable manifold")
-    plt.ylabel("Z ( m )", fontsize=12)
-    plt.xlabel("R ( m )", fontsize=12)
+    for i in range(len(files)):
+        R_data, Z_data = _prepare_data(files[i], cuts[i])
+        label = labels[i] 
+        if linestyle == "line":
+            plt.plot(R_data, Z_data, label=label, linewidth=linewidth)
+        elif linestyle == "scatter":
+            plt.scatter(R_data, Z_data, label=label, s=scatter_size)
+        elif linestyle == "both":
+            plt.plot(R_data, Z_data, label=label, linewidth=linewidth)
+            plt.scatter(R_data, Z_data, s=scatter_size)
+    if wall is not None:
+        R_wall, Z_wall = _load_wall(wall)
+        plt.plot(R_wall, Z_wall, color="black", linewidth=linewidth, label="First wall")
     if xlim is not None:
         plt.xlim(xlim)
     if zlim is not None:
         plt.ylim(zlim)
+    plt.ylabel("Z ( m )", fontsize=12)
+    plt.xlabel("R ( m )", fontsize=12)
     plt.legend()
     plt.tight_layout()
     plt.show()
 
+
+def _validate_entries(files, cuts, labels, linestyle):
+    if len(files) == 0:
+        raise ValueError("At least one file must be provided.")
+    
+    if cuts is not None and len(cuts) != len(files):
+        raise ValueError("Length of cuts list must match the length of files list.")
+    elif cuts is None:
+        cuts = [0] * len(files)
+
+    if labels is None:
+        labels = [f"Manifold {i+1}" for i in range(len(files))]
+    elif len(labels) != len(files):
+        raise ValueError("Length of labels list must match the length of files list.")
+
+    if linestyle not in ["line", "scatter", "both"]:
+        raise ValueError("Invalid linestyle. Choose from 'line', 'scatter', or 'both'.")
+    return cuts, labels
+    
+
+def _prepare_data(file, cut):
+    data = np.loadtxt(file, ndmin=2)
+    if cut == 0:
+        subset = data
+    else:
+        subset = data[:cut]
+    subset_R = subset[:, 0]
+    subset_Z = subset[:, 1]
+    return subset_R, subset_Z
+
+
+def _load_wall(wall):
+    data_W = np.loadtxt(wall, ndmin=2)
+    R_wall = data_W[:,0]
+    Z_wall = data_W[:,1]
+    return R_wall, Z_wall
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot manifolds generated by fpgen.")
-    parser.add_argument("--sfile", type=str, default=None, help="Path to the stable manifold file.")
-    parser.add_argument("--ufile", type=str, default=None, help="Path to the unstable manifold file.")
+    parser.add_argument("files", type=str, nargs="+", help="List of paths to the files containing the manifold data.")
+    parser.add_argument("--cuts", type=int, nargs="+", default=None, help="List of integers to limit the number of points imported from each manifold. Set the integer to 0 to import the whole file. If no list is provided, all integers will be set to 0. Default is None.\nExample: cuts = [100, 200] will import the first 100 points from the first file and the first 200 points from the second file. cuts = [-100, -200] will import all points except the last 100 from the first file and all points except the last 200 from the second file.")
+    parser.add_argument("--labels", type=str, nargs="+", default=None, help="List of labels for the plots. Default is None.")
     parser.add_argument("--wall", type=str, default=None, help="Path to the wall file.")
     parser.add_argument("--linestyle", type=str, default="line", help="Line style for the plot: 'line', 'scatter', or 'both'.")
-    parser.add_argument("--wu_cut", type=int, default=None, help="Limit number of points from unstable manifold file.")
-    parser.add_argument("--ws_cut", type=int, default=None, help="Limit number of points from stable manifold file.")
-    parser.add_argument("--figsize", type=float, nargs=2, default=(7, 15), help="Figure size in inches.")
+    parser.add_argument("--figsize", type=float, nargs=2, default=(5, 8), help="Figure size in inches.")
     parser.add_argument("--dpi", type=int, default=80, help="Dots per inch for the figure.")
     parser.add_argument("--sizef", type=float, default=1, help="Size factor for the figure.")
     parser.add_argument("--linewidth", type=int, default=2, help="Line width for the plot.")
@@ -108,12 +125,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    plot_mf(sfile=args.sfile,
-            ufile=args.ufile,
+    plot_mf(files=args.files,
+            cuts=args.cuts,
+            labels=args.labels,
             wall=args.wall,
             linestyle=args.linestyle,
-            wu_cut=args.wu_cut,
-            ws_cut=args.ws_cut,
             figsize=args.figsize,
             dpi=args.dpi,
             sizef=args.sizef,

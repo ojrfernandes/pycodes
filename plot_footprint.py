@@ -7,7 +7,7 @@ from matplotlib.colors import LogNorm
 from matplotlib.ticker import FuncFormatter
 
 
-def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_f=6, v_min=None, v_max=None, turn_cap=None, savefig=None):
+def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cmap_key=10, figsize=(10, 5), sizef=1, dpi=80, norm_factor=6, v_min=None, v_max=None, turn_cap=None, savefig=None):
     """
     Function to plot footprints evaluated by the maglib code fpgen.
     
@@ -39,6 +39,8 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
         Interval to cap the color scale for the number of toroidal turns plot. Default is None.
     savefig : str
         Path to save the figure(s). If None, figure(s) will not be saved. Default is None.
+    psi_cap : bool
+        If True, plot all data points with z_psi >= 1 in white. Default is False.
 
     Returns
     -------
@@ -93,7 +95,18 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
     # Reshape z data into matrices
     z_cl = np.reshape(z_cl, (num_rows, num_columns)).transpose() 
     z_psi = np.reshape(z_psi, (num_rows, num_columns)).transpose() 
-    z_turns = np.reshape(z_turns, (num_rows, num_columns)).transpose() 
+    z_turns = np.reshape(z_turns, (num_rows, num_columns)).transpose()
+
+    # Apply psi_cap masking if requested
+    if psi_cap:
+        mask = (z_psi >= 1) | (z_turns <= 1 )
+        z_cl_plot = np.ma.masked_where(mask, z_cl)
+        z_psi_plot = np.ma.masked_where(mask, z_psi)
+        z_turns_plot = np.ma.masked_where(mask, z_turns)
+    else:
+        z_cl_plot = z_cl
+        z_psi_plot = z_psi
+        z_turns_plot = z_turns
 
     # Custom x-axis formatter: convert degrees to radians
     def degrees_to_radians(x, pos):
@@ -105,6 +118,11 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
     cmap_f = mpl.colormaps.get_cmap(cmap).resampled(cmap_key)
     cmap_cap.set_under("white")
     cmap_f.set_under("white")
+    
+    # Set bad values (masked) to white
+    if psi_cap:
+        cmap_cap.set_bad("white")
+        cmap_f.set_bad("white")
 
     if which_plot not in ["cl", "psi", "turns", "au", "all"]:
         raise ValueError("Invalid plot type. Use 'cl' for connection length, 'psi' for psi min, 'turns' for number of turns, 'au' for arbitrary units, or 'all'.")
@@ -113,7 +131,7 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
     if which_plot == "all" or which_plot == "cl":
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_cl, cmap=cmap, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', norm=LogNorm())
+        plt.imshow(z_cl_plot, cmap=cmap_cap, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', norm=LogNorm())
         plt.colorbar().set_label("connection length ( m )")
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
@@ -138,7 +156,7 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
     if which_plot == "all" or which_plot == "psi":
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_psi, cmap=cmap, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto')
+        plt.imshow(z_psi_plot, cmap=cmap_cap, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto')
         plt.colorbar().set_label(r'$\psi_{N\,\,\mathrm{min}}$')
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
@@ -163,7 +181,7 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
     if which_plot == "all" or which_plot == "turns":
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_turns, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0] if turn_cap is not None else None, vmax=turn_cap[1] if turn_cap is not None else None, norm=LogNorm() if turn_cap is None else None)
+        plt.imshow(z_turns_plot, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=turn_cap[0] if turn_cap is not None else None, vmax=turn_cap[1] if turn_cap is not None else None, norm=LogNorm() if turn_cap is None else None)
         plt.colorbar().set_label("toroidal turns")
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
@@ -197,11 +215,23 @@ def plot_footprint(filename=None, which_plot="all", xaxis="rad", cmap="jet", cma
             z_norm = ((1 - (1/(z_psi*z_cl))) - v_min) / (v_max - v_min)
         else:
             # default normalization
-            z_norm = (1-(1/(z_psi*z_cl)-np.min(1/(z_psi*z_cl)))*norm_f/np.max(1/(z_psi*z_cl)))
+            # z_norm = (1-(1/(z_psi*z_cl)-np.min(1/(z_psi*z_cl)))*norm_f/np.max(1/(z_psi*z_cl)))
+            z_norm_0 = 1/(z_cl*z_psi)
+            if np.max(z_norm_0) == np.min(z_norm_0):
+                raise ValueError("All values in 1/(psiN_min*CL) are the same. Cannot normalize.")
+            else:
+                a = np.mean(z_norm_0)
+                b = np.std(z_norm_0)
+                z_min = np.min(z_norm_0)
+                z_max = np.max(z_norm_0)
+                z_norm = ((z_norm_0 - z_min)) / (z_max - z_min)
+                #z_norm = z_norm_0
+            
+        z_norm_plot = z_norm
         
         fsize=(figsize[0]*sizef, figsize[1]*sizef)
         plt.figure(figsize=fsize, dpi=dpi)
-        plt.imshow(z_norm, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto', vmin=0, vmax=1)
+        plt.imshow(z_norm_plot, cmap=cmap_f, extent=[0, 360, np.min(y), np.max(y)], origin='lower', aspect='auto')
         plt.colorbar().set_label('$( \psi_{N\,\,\mathrm{min}}$ . connection length ) $^{-1}_\mathrm{norm}$') 
         if xaxis == "rad":
             plt.gca().xaxis.set_major_formatter(FuncFormatter(degrees_to_radians))
@@ -253,5 +283,5 @@ if __name__ == "__main__":
         v_min=args.v_min,
         v_max=args.v_max,
         turn_cap=args.turn_cap,
-        savefig=args.savefig
+        savefig=args.savefig,
     )

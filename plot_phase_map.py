@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-def plot_phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, levels=100, cmap='jet', fullspace=False, phase_signal=[-1,1]):
+def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize: tuple=(7,5), dpi: int=100, levels: int=100, cmap: str='jet', fullspace: bool=False, phase_signal: list=[-1,1]) -> None:
     """
     Map and plot a two dimensional map of the magnetic perturbation amplitude for a specific m/n mode from "flare_surfmn.py" .npz data files in a specified directory.
 
@@ -16,7 +16,7 @@ def plot_phase_map(directory, n_tor, m_pol, d_phase, figsize=(7,5), dpi=100, lev
         Toroidal mode number.
     m_pol : int
         Poloidal mode number.
-    d_phase : float
+    d_phase : int
         Phase difference increment in degrees.
     figsize : tuple
         Size of the figure (width, height). Default is (7, 5).

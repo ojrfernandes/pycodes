@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_flare_harmonic(data_vacuum=None, data_single_fluid=None, data_two_fluid=None, figsize=(7,5), dpi=100, label_vac='Vacuum', label_single_fluid='Single Fluid', label_two_fluid='Two Fluid'):
+def plot_flare_harmonic(data_vacuum:str =None, data_single_fluid:str =None, data_two_fluid:str =None, figsize: tuple =(7,5), dpi: int=100, label_vac: str='Vacuum', label_single_fluid:str ='Single Fluid', label_two_fluid:str ='Two Fluid') -> None:
     """
     Plot the amplitude of the poloidal Fourier harmonics along the resonant condition from the given .npz data file(s).
     Up to three datasets can be plotted for comparison: vacuum, single fluid, and two fluid.

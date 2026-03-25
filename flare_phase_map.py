@@ -7,7 +7,7 @@ import signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
-def flare_phase_map(model_path, save_to_path, ntor, m_max, d_phase=10, nprocs=1):
+def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d_phase: int=10, nprocs: int=1) -> None:
     """
     Run flare_surfmn over a grid of phase_L and phase_U values to generate a phase map.
 

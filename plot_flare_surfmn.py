@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_flare_surfmn(data, res_line=True, figsize=(7,5), dpi=100, levels=100, cmap='jet'):
+def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:int =100, levels:int =100, cmap:str ='jet') -> None:
     """
     Plot the surfmn spectra from the given .npz data file.
 

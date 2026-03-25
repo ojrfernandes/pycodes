@@ -2,11 +2,11 @@
 import argparse
 import numpy as np
 from flare import model
-from scipy.interpolate import CubicSpline, griddata, RegularGridInterpolator
+from scipy.interpolate import CubicSpline, griddata
 from flare.analysis import equi2d_rzarray, fluxsurf2d_parameters, fourier_transform
 
 
-def flare_surfmn(flare_model, n_tor, m_max, filename):
+def flare_surfmn(flare_model: str, n_tor: int, m_max: int, filename: str) -> None:
     """
     Generate and save the surfmn data for a given FLARE model.
 
@@ -97,7 +97,7 @@ def flare_surfmn(flare_model, n_tor, m_max, filename):
 
     
 
-def fluxsurf_params(n_tor, m_max):
+def fluxsurf_params(n_tor: int, m_max: int):
     """
     Build the psiN (normalized poloidal flux), q (safety factor) and area (flux surface area) arrays including the resonant values.
 

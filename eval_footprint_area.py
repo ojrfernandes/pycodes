@@ -5,7 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
-def eval_footprint_area(filename=None, turn_cap=(5,10), cmap_key=5, cmap="jet", figsize=(10,5), sizef=1, dpi=80, xaxis="rad"):
+def eval_footprint_area(filename: str=None, turn_cap: tuple=(5, 10), cmap_key: int=5, cmap: str="jet", figsize: tuple=(10, 5), sizef: float=1, dpi: int=80, xaxis: str="rad") -> None:
     """
     Evaluate footprint area from footprint data file
     

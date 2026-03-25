@@ -7,7 +7,7 @@ from m3dc1.eval_field import eval_field
 from m3dc1.flux_coordinates import flux_coordinates
 from m3dc1.eigenfunction import check_sim_object
 
-def plot_profiles(filename="C1.h5", time=1, fcoords='pest', points=121):
+def plot_profiles(filename: str="C1.h5", time: int=1, fcoords: str='pest', points: int=121) -> None:
     """
     Plot M3D-C1 equilibrium profiles including q, pressure, temperature, density,
     toroidal velocity, and current density.

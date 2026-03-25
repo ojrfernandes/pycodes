@@ -3,7 +3,7 @@ import argparse
 import os
 import numpy as np
 
-def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=None, amplitudes=[1.0,1.0,1.0], flare_phase=True, phase_signal=[-1,1]):
+def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: str, timeslice: int, boundary: str=None, amplitudes: list=[1.0,1.0,1.0], flare_phase: bool=True, phase_signal: list=[-1,1]) -> None:
     """
     Generate flare model files for different phase combinations of IL and IU sets.
 
@@ -15,7 +15,7 @@ def flare_model_gen(coils, directory, n_tor, d_phase, sets, timeslice, boundary=
         Path to the directory where the model files will be saved.
     n_tor : int
         Toroidal mode number.
-    d_phase : float
+    d_phase : int
         Phase difference increment in degrees.
     sets : str
         Path to the directory containing IM, IL, IU sets.
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument('coils', type=str, help="Type of coils to use. Options are 'I' or 'CP'.")
     parser.add_argument('directory', type=str, help='Directory to save the generated model files.')
     parser.add_argument('n_tor', type=int, help='Toroidal mode number.')
-    parser.add_argument('d_phase', type=float, help='Phase difference increment in degrees.')
+    parser.add_argument('d_phase', type=int, help='Phase difference increment in degrees.')
     parser.add_argument('sets', type=str, help='Path to the directory containing IM, IL, IU sets.')
     parser.add_argument('timeslice', type=int, help='Time slice to use from the M3D-C1 data.')
     parser.add_argument('--boundary', type=str, default=None, help='Path to the boundary file. Default is tcabr_first_wall.txt')
