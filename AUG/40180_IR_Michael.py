@@ -1,20 +1,22 @@
-# Path to AUG diagnostics python modules
 import sys
+#################################
 sys.path.append('/shares/departments/AUG/users/ircd/Software/py3irtools')
-
-# Lower sector 7 IR diagnostics 
 import Sektor7Unten
 import ir
+################################
 
-# General python modules
 import numpy as np
+
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+
 import scipy
 from scipy.interpolate import interp1d
 from scipy.signal import butter, filtfilt, find_peaks, peak_prominences
 from scipy.integrate import trapezoid as trapz
+
 from copy import deepcopy as copy
+
 
 ######################################IR#######################################################
 shotNumber = 40180
@@ -22,16 +24,14 @@ edition=4
 timeStart = 4.34
 timeEnd = timeStart+ 1.33
 
-#a = Sektor7Unten.heatFluxProfiles(shotNumber, edition)
-#a.wiener()
-heatFlux = Sektor7Unten.heatFluxProfiles(shotNumber, edition)
-heatFlux.wiener()
+a = Sektor7Unten.heatFluxProfiles(shotNumber, edition)
+a.wiener()
 
-indexAll = np.arange(heatFlux.data.shape[1])
-indexToExclude = []
-index = list(set(indexAll) - set(indexToExclude))
+indexAll = np.arange(a.data.shape[1])
+indexExclude = []
+index = list(set(indexAll) - set(indexExclude))
 
-heatFlux.data = heatFlux.data[:,::-1]
+a.data = a.data[:,::-1]
 
 get_strikeline = lambda i: np.argmax(((a.data[i,1200:1350]/np.max(a.data[i,1200:1350]))[::-1]>0.6))
 
