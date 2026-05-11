@@ -46,30 +46,36 @@ def plot_profiles(filename: str="C1.h5", time: int=1, fcoords: str='pest', point
     }
 
     # Initialize simulation object
-    sims = check_sim_object(sim=None, time=time, filename=filename)
-
-    if isinstance(sims[0].fc,fpy.flux_coordinates)==False or (fcoords!=None and (sims[0].fc.fcoords!=fcoords)):
-        sims[0] = flux_coordinates(sim=sims[0], filename=filename, fcoords=fcoords, phit=0.0, points=points, quiet=True)
+    if time == -1:
+        simeq = fpy.sim_data(filename, time=-1)
+        sims = [simeq]
     else:
-        if sims[0].fc.m != points:
+        sims = check_sim_object(sim=None, time=time, filename=filename)
+
+        if isinstance(sims[0].fc,fpy.flux_coordinates)==False or (fcoords!=None and (sims[0].fc.fcoords!=fcoords)):
             sims[0] = flux_coordinates(sim=sims[0], filename=filename, fcoords=fcoords, phit=0.0, points=points, quiet=True)
+        else:
+            if sims[0].fc.m != points:
+                sims[0] = flux_coordinates(sim=sims[0], filename=filename, fcoords=fcoords, phit=0.0, points=points, quiet=True)
+
+    # Get flux sufaces
     fc = sims[0].fc
 
     # Initialize toroidal angle array
     torphi = np.zeros_like(fc.rpath)
 
     # Evaluate fields
-    pi = eval_field(field_name='pi', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    pe = eval_field(field_name='pe', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    p = eval_field(field_name='p', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    ti = eval_field(field_name='ti', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    te = eval_field(field_name='te', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    ni = eval_field(field_name='ni', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    ne = eval_field(field_name='ne', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    pi    = eval_field(field_name='pi', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    pe    = eval_field(field_name='pe', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    p     = eval_field(field_name='p', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    ti    = eval_field(field_name='ti', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    te    = eval_field(field_name='te', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    ni    = eval_field(field_name='ni', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    ne    = eval_field(field_name='ne', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='scalar', sim=sims[0], time=sims[0].timeslice, quiet=True)
     v_phi = eval_field(field_name='v', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='phi', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    j_R = eval_field(field_name='j', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='R', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    j_R   = eval_field(field_name='j', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='R', sim=sims[0], time=sims[0].timeslice, quiet=True)
     j_phi = eval_field(field_name='j', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='phi', sim=sims[0], time=sims[0].timeslice, quiet=True)
-    j_Z = eval_field(field_name='j', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='Z', sim=sims[0], time=sims[0].timeslice, quiet=True)
+    j_Z   = eval_field(field_name='j', R=fc.rpath[0], phi=torphi[0], Z=fc.zpath[0], coord='Z', sim=sims[0], time=sims[0].timeslice, quiet=True)
 
     # Create plots
     fig, axs = plt.subplots(2, 3, figsize=(22, 10))
