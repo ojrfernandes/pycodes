@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --nodes={nodes}
+#SBATCH --ntasks={ntasks}
+#SBATCH -p {partition}
+#SBATCH -J {job_name}
+#SBATCH --time={time_limit}
+
+echo $SLURM_JOB_NODELIST
+nodeset -e $SLURM_JOB_NODELIST
+
+cd $SLURM_SUBMIT_DIR
+
+# Run M3D-C1
+rm -f C1stdout
+mpiexec -n $SLURM_NTASKS {cluster_binary} {solver_flag} >& C1stdout

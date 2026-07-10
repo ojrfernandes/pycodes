@@ -1,0 +1,197 @@
+&inputnl
+
+! I/O Options
+! ===========
+	ntimemax = 1	! number of time steps
+	ntimepr = 1	! number of time steps per output
+	iprint = 1	! 1 = print detailed debug info
+	itimer = 1	! 1 = print timing info
+	
+	irestart = 0
+	
+	iread_eqdsk = 3
+	iwrite_aux_vars = 1
+	iwrite_transport_coeffs = 1
+	itemp_plot = 1
+
+	irmp = 1
+	extsubtract = 1
+	iadapt = 0
+
+! Numerical Method Options
+! ========================
+	dt = 1		! time step
+
+	integrator = 0  ! 0 = Crank-Nicholson, 1 = BDF2
+	thimp = 0.6	! implicitness parameter for CN
+	imp_mod = 0
+	isplitstep = 0
+
+	deex = 1.
+	hyper  = 0.0	! hyper-resistivity (applied to psi)
+	hyperi = 0.0	! hyper-resistivity (applied to Bz )
+	hyperv = 0.0	! hyper-viscosity   (applied to vz )
+	hyperc = 0.0	! hyper-viscosity   (applied to chi)
+	hyperp = 0.0    ! hyper-pressure-diffusion
+	ihypdx = 0
+	ihypeta = 0
+
+	int_pts_main = 25
+	int_pts_aux = 25
+	int_pts_diag = 25
+
+	ivform = 1
+	jadv = 1
+	isurface = 0
+	
+	max_ke = 0.
+	
+	itime_independent = 1
+	imp_bf = 1
+	
+	regular = 1e-8
+	
+	iset_pe_floor = 1
+	pe_floor = 1e-10
+	
+
+! Model Options
+! =============
+	itor = 1	! 1 = toroidal geometry, 0 = slab geometry
+	
+	linear = 1	! 0 = nonlinear; 1 = linear
+	eqsubtract = 1	! 1 = subtract equilibrium in nonlinear simulations
+	numvar = 3	! 1 = 2-field; 2 = 4-field; 3 = 6-field
+	idens = 1	! 1 = advance density
+	ipres = {ipres}       ! 1 = include electron pressure equation
+	gyro = 0
+	
+	inertia = 1
+	
+	ion_mass = 1.
+	z_ion = 2.5
+
+
+! Equilibrium Options
+! ===================
+      	itaylor = 1	! determines initial conditions
+			! 0: Tilting Cylinder
+			! 1: Taylor reconnection
+			! 2: Force-free Taylor state
+			! 3: GEM-reconnection
+			! 4: Wave propagation
+	idevice = -1	! when itor=1 and itaylor=1
+			! 0: vertical field
+			! 1: CDX-U
+			! 2: NSTX
+			! 3: ITER
+			! 4: DIII-D
+
+	p0 = 1.		! total pressure
+	pi0 = 0.5	! ion pressure
+	
+	eps = 1e-8
+
+	irot = -1
+	iread_omega_ExB = 1
+	iread_ne = 1
+	iread_te = 1
+
+
+! Transport Parameters
+! ====================
+	
+	!eta_wall = 0.1
+	eta_vac = 10.0
+	iresfunc = 4
+	amu = 1e-6	! kinematic viscosity 
+	amuc = 0.
+	amupar = 0.
+	denm = 1e-6	! density diffusion
+	kappat = 1e-6	! isotropic thermal conductivity
+	kappa0 = 0.	!  kappa = kappat + kappa0*p/T^(3/2)
+	kappar = 1.	! field-aligned thermal conductivity
+
+	gam = 1.66666666666667	! adiabatic constant
+
+	db_fac = {db_fac}	! ion skin depth
+
+
+! Boundary Conditions
+! ===================
+	iper = 0	! 1 = periodic in r
+	jper = 0	! 1 = periodic in z
+
+	nonrect = 1
+
+	icsubtract = 1
+	
+	imulti_region = 1
+        
+	boundary_type(1) = 1   ! First wall (edge1 = first_wall_inner, plasma-facing)
+	boundary_type(5) = 2   ! Domain boundary (edge5 = outer_domain)
+
+	zone_type(1) = 1   ! Plasma
+	zone_type(2) = 2   ! Graphite tile first wall (conductor)
+	zone_type(3) = 3   ! Vacuum gap
+	zone_type(4) = 2   ! 316L stainless steel vessel (conductor)
+	zone_type(5) = 3   ! Outer vacuum
+
+	eta_zone(2) = 5.1076e-3    ! zone 2, graphite tile (14e-6 Ohm*m)*1000
+	eta_zone(4) = 2.6997e-7    ! zone 4, 316L steel vessel (7.4e-7 Ohm*m)
+		
+! Mesh Parameters
+! ===============
+	mesh_filename = 'ts0-adapted.smb'
+	mesh_model    = 'tcabr-5-region.txt'
+
+	  
+! Grad-Shafranov Options
+! ======================
+	xlim = 0.	! limiting value of x
+	zlim = 0.	! limiting value of z
+	xlim2 = 0.	! limiting value of x
+	zlim2 = 0.	! limiting value of z
+	xmag  = 0.63
+	zmag  = 0.0
+	xzero = 0.63
+	xmag0 = 0.63
+	zmag0 = 0.0
+	th_gs = 0.5
+	igs = 500	! number of grad-shafranov iterations
+	tol_gs = 5.0e-7
+	pedge = 2.5e-5
+	expn = 0.
+	divertors = 0
+	!mod_null_rs = 1
+	!mod_null_rs2 = 1
+	xnull = 0.49
+	znull = -0.21
+	!xnull2 = 0.49
+	!znull2 = 0.21
+	sigma0 = 0.025
+	iwall_is_limiter = 0
+
+	igs_extend_p = 1
+
+        !gs_vertical_feedback(10)  =  500
+	gs_vertical_feedback(11)  =  500
+	gs_vertical_feedback(12)  =  500
+        gs_vertical_feedback(13)  = -500
+	gs_vertical_feedback(14)  = -500
+	!gs_vertical_feedback(15)  = -500
+	
+	gs_radial_feedback(18)    = -500
+	gs_radial_feedback(19)    = -500
+	gs_radial_feedback(20)    = -500
+	gs_radial_feedback(21)    = -500
+
+	ntor = {ntor}
+
+	b0_norm = 1.e4
+	n0_norm = 1e14
+	l0_norm = 100.
+	
+ /
+
+
