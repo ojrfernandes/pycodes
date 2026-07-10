@@ -1,6 +1,4 @@
-TCABR/__pycache__
-TCABR/notebooks
-AUG/__pycache__
-AUG/notebooks
+*/__pycache__
+*/notebooks
 AUG/reference
 AUG/40180
