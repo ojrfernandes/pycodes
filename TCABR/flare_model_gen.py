@@ -3,6 +3,8 @@ import argparse
 import os
 import numpy as np
 
+from phase_grid import phase_grid_size
+
 def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: str, timeslice: int, boundary: str=None, amplitudes: list=[1.0,1.0,1.0], flare_phase: bool=True, phase_signal: list=[-1,1]) -> None:
     """
     Generate flare model files for different phase combinations of IL and IU sets.
@@ -40,7 +42,7 @@ def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: 
     if boundary is None:
         boundary = "/home/jfernandes/machines_geo/input_geo/tcabr_first_wall.txt"
 
-    n_models = int((360 / n_tor / d_phase) + 1)
+    n_models = phase_grid_size(n_tor, d_phase)
 
     #check if directory and sets end in '/'
     if not directory.endswith('/'):

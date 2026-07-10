@@ -3,11 +3,14 @@ import os
 import argparse
 import sys
 import subprocess
-import signal  
+import signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+from phase_grid import phase_grid_size
 
-def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d_phase: int=10, nprocs: int=1) -> None:
+
+def flare_phase_map(model_path: str, save_to_path: str, n_tor: int, m_max: int, d_phase: int=10, nprocs: int=1,
+                     n_pol: int=400) -> None:
     """
     Run flare_surfmn over a grid of phase_L and phase_U values to generate a phase map.
 
@@ -17,7 +20,7 @@ def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d
         Path to the directory containing flare model files.
     save_to_path : str
         Directory to save the output .npz files.
-    ntor : int
+    n_tor : int
         Toroidal mode number.
     m_max : int
         Maximum mapped poloidal mode number.
@@ -25,6 +28,9 @@ def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d
         Phase step in degrees. Default is 10.
     nprocs : int
         Number of parallel processes. Default is 1.
+    n_pol : int
+        Poloidal Fourier transform resolution passed through to flare_surfmn,
+        decoupled from m_max. Default is 400 (see flare_surfmn.py).
 
     Returns
     -------
@@ -32,7 +38,7 @@ def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d
         Saves surfmn data in .npz files in the specified directory.
     """
 
-    n_elements = int((360 / ntor / d_phase) + 1)
+    n_elements = phase_grid_size(n_tor, d_phase)
 
     if not os.path.exists(save_to_path):
         os.makedirs(save_to_path)
@@ -41,7 +47,7 @@ def flare_phase_map(model_path: str, save_to_path: str, ntor: int, m_max: int, d
 
     # Prepare task list
     tasks = [
-        (model_path, save_to_path, ntor, m_max, i * d_phase, j * d_phase)
+        (model_path, save_to_path, n_tor, m_max, i * d_phase, j * d_phase, n_pol)
         for i in range(n_elements)
         for j in range(n_elements)
     ]
@@ -73,7 +79,7 @@ def _process_phase_pair(args):
     Worker function for one (phase_L, phase_U) pair.
     
     """
-    model_path, save_to_path, ntor, m_max, phase_L, phase_U = args
+    model_path, save_to_path, n_tor, m_max, phase_L, phase_U, n_pol = args
 
     file_I = os.path.join(model_path, f'dephase_IL_{int(phase_L):03d}_IU_{int(phase_U):03d}')
     file_CP = os.path.join(model_path, f'dephase_CPL_{int(phase_L):03d}_CPU_{int(phase_U):03d}')  
@@ -96,7 +102,7 @@ def _process_phase_pair(args):
     cmd = [
         sys.executable, "-c",
         f"from flare_surfmn import flare_surfmn; "
-        f"flare_surfmn(r'{flare_model}', {ntor}, {m_max}, r'{filename}')"
+        f"flare_surfmn(r'{flare_model}', {n_tor}, {m_max}, r'{filename}', n_pol={n_pol})"
     ]
 
     with open(log_file, "w") as f:
@@ -114,18 +120,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate phase map using flare_surfmn.")
     parser.add_argument("model_path", type=str, help="Path to the directory containing flare model files.")
     parser.add_argument("save_to_path", type=str, help="Directory to save the output .npz files.")
-    parser.add_argument("ntor", type=int, help="Toroidal mode number.")
+    parser.add_argument("n_tor", type=int, help="Toroidal mode number.")
     parser.add_argument("m_max", type=int, help="Maximum poloidal mode number.")
     parser.add_argument("--d_phase", type=int, default=10, help="Phase step in degrees. Default is 10.")
     parser.add_argument("--nprocs", type=int, default=1, help="Number of parallel processes. Default is 1.")
+    parser.add_argument("--n_pol", type=int, default=400,
+                         help="Poloidal Fourier transform resolution passed to flare_surfmn (default: 400).")
 
     args = parser.parse_args()
 
     flare_phase_map(
         args.model_path,
         args.save_to_path,
-        args.ntor,
+        args.n_tor,
         args.m_max,
         args.d_phase,
-        args.nprocs
+        args.nprocs,
+        args.n_pol
     )

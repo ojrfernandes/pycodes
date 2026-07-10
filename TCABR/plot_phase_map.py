@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+from phase_grid import phase_grid_size
+
 def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize: tuple=(7,5), dpi: int=100, levels: int=100, cmap: str='jet', fullspace: bool=False, phase_signal: list=[-1,1]) -> None:
     """
     Map and plot a two dimensional map of the magnetic perturbation amplitude for a specific m/n mode from "flare_surfmn.py" .npz data files in a specified directory.
@@ -15,7 +17,10 @@ def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize
     n_tor : int
         Toroidal mode number.
     m_pol : int
-        Poloidal mode number.
+        Poloidal mode number of the resonant surface to map (q = m_pol/n_tor).
+        Must satisfy |m_pol| <= m_max used when the .npz files were
+        generated, and q = m_pol/n_tor must lie within the equilibrium's
+        q(psi) range, i.e. it must appear in each file's 'm_res' array.
     d_phase : int
         Phase difference increment in degrees.
     figsize : tuple
@@ -29,7 +34,7 @@ def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize
     fullspace : bool
         If True, replicate the phase map to cover the full 360 degrees. Default is False.
     phase_signal : list of int
-        Phase signal for IL and IU sets respectively. Default is [-1, 1].   
+        Phase signal for IL and IU sets respectively. Default is [-1, 1].
 
     Returns
     -------
@@ -37,10 +42,11 @@ def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize
         Displays the phase map plot.
 
     """
-    
+
     # Determine number of elements in the phase map
-    n_elements = int((360 / n_tor / d_phase) + 1)
+    n_elements = phase_grid_size(n_tor, d_phase)
     db_map = np.zeros((n_elements, n_elements))
+    coil = None
 
     # Loop over all combinations of phase differences
     for i in range(n_elements):
@@ -59,39 +65,24 @@ def plot_phase_map(directory: str, n_tor: int, m_pol: int, d_phase: int, figsize
             else:
                 raise FileNotFoundError(f"No valid .npz file found for phases {phase_L}, {phase_U}")
 
-            # Load data
-            if not os.path.exists(datafile):
-                db_map[i, j] = np.nan
-                print(f"Warning: file {datafile} does not exist.")
-                continue
-            try:
-                with np.load(datafile) as f:
-                    db_matrix = f["db_matrix"]
-                    q_vals = f["q_vals"]
-                    m_values = f["m_values"]
-            except Exception as e:
-                print(f"Warning: failed to load {datafile}: {e}")
-                db_map[i, j] = np.nan
-                continue
+            # Read the harmonic amplitude directly at the resonant surface
+            # m_res == m_pol, as precomputed by flare_surfmn.py (cubic-spline
+            # interpolation onto the exact resonant psiN) rather than
+            # re-deriving it via nearest-neighbor lookup on the coarser
+            # (psiN, m) grid.
+            with np.load(datafile) as f:
+                m_res = f["m_res"]
+                db_res = f["db_res"]
 
-            # Find index of m_pol in m_values
-            if m_pol in m_values:
-                idx_m = np.where(m_values == m_pol)[0][0]
+            if m_pol in m_res:
+                idx = np.where(m_res == m_pol)[0][0]
+                db_map[i, j] = db_res[idx]
             else:
-                raise ValueError(f"m_pol {m_pol} not found in m_values array.")
-
-            # Find index of q_res in q_vals
-            q_res = m_pol / n_tor
-            if q_res <= np.min(q_vals) or q_res >= np.max(q_vals):
-                db_mpol = np.nan
-                print(f"q_res {q_res} = {m_pol} / {n_tor} is out of bounds of q_vals array.")
-            else:
-                idx_q = (np.abs(q_vals - q_res)).argmin()
-                db_mpol = db_matrix[idx_q, idx_m]
-
-            # Store in map
-            db_map[i, j] = db_mpol
-            
+                raise ValueError(
+                    f"m_pol={m_pol} not found in m_res for {datafile} "
+                    "(check |m_pol| <= m_max and that q = m_pol/n_tor lies within "
+                    "the equilibrium's q(psi) range)."
+                )
 
     if fullspace:
         db_map = np.tile(db_map[:-1, :-1], (n_tor, n_tor))
@@ -125,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument("directory", type=str, help="Path to the directory containing flare_surfmn output .npz files")
     parser.add_argument("n_tor", type=int, help="Toroidal mode number")
     parser.add_argument("m_pol", type=int, help="Poloidal mode number")
-    parser.add_argument("d_phase", type=float, help="Phase difference increment in degrees")
+    parser.add_argument("d_phase", type=int, help="Phase difference increment in degrees")
     parser.add_argument("--figsize", type=float, nargs=2, default=(7, 5), help="Figure size (width, height)")
     parser.add_argument("--dpi", type=int, default=100, help="DPI for the figure")
     parser.add_argument("--levels", type=int, default=100, help="Number of contour levels for the plot")

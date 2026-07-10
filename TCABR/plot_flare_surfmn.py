@@ -3,7 +3,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:int =100, levels:int =100, cmap:str ='jet') -> None:
+def plot_flare_surfmn(data: str, res_line: bool=True, mark_res: bool=True, mark_color: str='k',
+                       figsize: tuple=(7,5), dpi:int =100, levels:int =100, cmap:str ='jet') -> None:
     """
     Plot the surfmn spectra from the given .npz data file.
 
@@ -13,6 +14,11 @@ def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:
         Path to the .npz file containing surfmn data.
     res_line : bool
         Whether to plot the resonance line. Default is True.
+    mark_res : bool
+        Whether to mark the rational (resonant) surfaces with an 'x'.
+        Default is True.
+    mark_color : str
+        Color of the 'x' markers on the rational surfaces. Default is 'k'.
     figsize : tuple
         Size of the figure (width, height). Default is (7, 5).
     dpi : int
@@ -26,7 +32,7 @@ def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:
     -------
     None
         Displays the plot of the surfmn spectra.
-        
+
     """
     # Load data
     print(f"Loading surfmn data from {data}...")
@@ -38,12 +44,14 @@ def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:
             psiN_mesh = f['psiN_mesh']
             db_matrix = f['db_matrix']
             q_vals = f['q_vals']
+            psiN_res = f['psiN_res']
+            m_res = f['m_res']
     except KeyError as e:
         raise ValueError(f"Missing expected data in the file: {e}")
     except Exception as e:
         raise ValueError(f"Failed to load surfmn data: {e}")
     print("Data loaded successfully.")
-    
+
     # Plotting
     print("Plotting...")
     plt.figure(figsize=figsize, dpi=dpi)
@@ -52,6 +60,9 @@ def plot_flare_surfmn(data: str, res_line: bool=True, figsize: tuple=(7,5), dpi:
     if res_line:
         plt.plot(n_tor * q_vals, psiN_values, 'k--')
         plt.xlim(np.min(m_mesh), np.max(m_mesh))
+    if mark_res:
+        plt.scatter(m_res, psiN_res, marker='x', color=mark_color,
+                    s=40, linewidths=1.5, zorder=5, label='Rational surfaces')
     plt.xlabel('Poloidal Mode Number')
     plt.ylabel('Normalized Poloidal Flux')
     plt.tight_layout()
@@ -62,6 +73,10 @@ if __name__ == "__main__":
     parser.add_argument("data", type=str, help="Path to the surfmn data file")
     parser.add_argument("--no-res-line", action="store_false", dest="res_line",
                         help="Disable resonance line plotting")
+    parser.add_argument("--no-mark-res", action="store_false", dest="mark_res",
+                        help="Disable 'x' markers on rational (resonant) surfaces")
+    parser.add_argument("--mark-color", type=str, default="k",
+                        help="Color of the 'x' markers on rational surfaces")
     parser.add_argument("--figsize", type=float, nargs=2, default=(7, 5),
                         help="Figure size (width height)")
     parser.add_argument("--dpi", type=int, default=100, help="DPI for the figure")
@@ -72,6 +87,8 @@ if __name__ == "__main__":
     plot_flare_surfmn(
         data=args.data,
         res_line=args.res_line,
+        mark_res=args.mark_res,
+        mark_color=args.mark_color,
         figsize=args.figsize,
         dpi=args.dpi,
         levels=args.levels,
