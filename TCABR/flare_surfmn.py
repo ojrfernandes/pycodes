@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from flare import model
 from scipy.interpolate import CubicSpline, griddata
-from flare.analysis import equi2d_rzarray, fluxsurf2d_parameters, fourier_transform
+from flare.analysis import equi2d, equi2d_rzarray, fluxsurf2d_parameters, fourier_transform
 
 
 def flare_surfmn(flare_model: str, n_tor: int, m_max: int, filename: str, n_pol: int = 400) -> None:
@@ -52,7 +52,20 @@ def flare_surfmn(flare_model: str, n_tor: int, m_max: int, filename: str, n_pol:
     try:
         status = "building flux surface parameters"
         print("Building flux surface parameters...")
-        psiN_values, q_values, area_values, psiN_res, q_res_values, m_res_values = fluxsurf_params(n_tor, m_max)
+        (psiN_values, q_values, area_values, psiN_res, q_res_values, m_res_values,
+         area_res_values, qprime_res_values) = fluxsurf_params(n_tor, m_max)
+
+        # psi' = d(poloidal flux)/d(psiN), units Wb. psiN is by definition
+        # linear in poloidal flux, so this is a single constant for the whole
+        # equilibrium (not a function of psiN), unlike q'. IDL's
+        # island_widths.pro computes this as deriv(psi_norm, flux_pol)/(2*pi),
+        # but IDL's flux_pol is itself defined as -period*(psi-psi[0]) with
+        # period=2*pi (flux_coordinates.pro:416), so that 2*pi exactly cancels
+        # the explicit /(2*pi) there -- confirmed against a real IDL run
+        # (validate_chirikov.py): no factor of 2*pi belongs here on the FLARE
+        # side, which already works in the same (un-multiplied) convention as
+        # M3D-C1's raw psi.
+        psiprime = equi2d.poloidal_flux
 
         # Full ascending mode array returned by fourier_transform at this
         # resolution, and the mask selecting the requested +/-m_max range
@@ -99,7 +112,10 @@ def flare_surfmn(flare_model: str, n_tor: int, m_max: int, filename: str, n_pol:
             db_res=db_res,
             psiN_res=psiN_res,
             q_res=q_res_values,
-            m_res=m_res_values)
+            m_res=m_res_values,
+            area_res=area_res_values,
+            qprime_res=qprime_res_values,
+            psiprime=psiprime)
         
         print(f"Data saved to {filename}")
     
@@ -140,6 +156,11 @@ def fluxsurf_params(n_tor: int, m_max: int):
         Array of resonant q values (= m_res / n_tor).
     m_res : np.ndarray
         Array of resonant poloidal mode numbers (integers, |m| <= m_max).
+    area_res : np.ndarray
+        Array of resonant area (flux surface area) values, same order as m_res/psiN_res/q_res.
+    qprime_res : np.ndarray
+        Array of dq/dpsiN (magnetic shear numerator) at the resonant surfaces,
+        same order as m_res/psiN_res/q_res.
 
     """
 
@@ -184,6 +205,13 @@ def fluxsurf_params(n_tor: int, m_max: int):
     cs_a = CubicSpline(q_vals, area_vals)
     area_res = cs_a(q_res)
 
+    # dq/dpsiN at the resonant surfaces, via a forward spline over psiN
+    # (independent of the q_vals-sign-based reversal above, which only
+    # guarantees q_vals is ascending -- sort by psiN explicitly here).
+    idx_forward = np.argsort(psiN_values)
+    qprime_spline = CubicSpline(psiN_values[idx_forward], q_vals[idx_forward]).derivative()
+    qprime_res = qprime_spline(psiN_res)
+
     # combine and sort the original and resonant values
     psiN = np.concatenate((psiN_values, psiN_res))
     q = np.concatenate((q_vals, q_res))
@@ -194,7 +222,7 @@ def fluxsurf_params(n_tor: int, m_max: int):
     q = q[idx_psiN]
     area = area[idx_psiN]
 
-    return psiN, q, area, psiN_res, q_res, m_res
+    return psiN, q, area, psiN_res, q_res, m_res, area_res, qprime_res
 
 
 

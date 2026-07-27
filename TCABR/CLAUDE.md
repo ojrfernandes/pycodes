@@ -33,7 +33,7 @@ External dependencies of note (not on PyPI — come from the M3D-C1/FLARE instal
 
 ## Architecture
 
-### RMP phase-scan pipeline (flare_*, plot_phase_map/plot_flare_surfmn/plot_flare_harmonic)
+### RMP phase-scan pipeline (flare_*, plot_phase_map/plot_flare_surfmn/plot_flare_harmonic/plot_flare_chirikov)
 
 This is the core, multi-file pipeline in the repo. Stages, in order:
 
@@ -60,6 +60,16 @@ This is the core, multi-file pipeline in the repo. Stages, in order:
    `|Bmn|` at one fixed `m_pol` as a 2D map over (phase_L, phase_U). `plot_flare_surfmn.py` plots a single
    `.npz`'s full (m, psiN) spectrum; `plot_flare_harmonic.py` overlays `|Bmn(psiN)|` on resonant surfaces
    from multiple `.npz` files for comparison.
+5. **`flare_chirikov.py`** — pure post-processing on top of a `flare_surfmn.py` `.npz` (no FLARE/M3D-C1
+   reload): computes the island half-width at each resonant surface,
+   `width = (2/pi)*sqrt((area*Bmn[T]/|m*psiprime|)*|q/qprime|)`, and the Chirikov overlap parameter between
+   adjacent resonant surfaces, `chi[j] = (width[j]+width[j+1])/2/|psiN_res[j+1]-psiN_res[j]|` — a direct port
+   of IDL's `island_widths.pro`/`chirikov.pro`. Because it only reads the `.npz`, it is completely agnostic
+   to how that `.npz`'s field was built: running it over `flare_phase_map.py`'s per-grid-point `.npz` outputs
+   gives a Chirikov phase map "for free", inheriting the same multi-coil-set amplitude/phase superposition
+   (done natively at the FLARE Fortran field-evaluation level) with zero new code. `plot_flare_chirikov.py`
+   plots `chirikov` vs `psimid` (or `width_res` vs `psiN_res`), linear-axis line/marker plots matching IDL's
+   `plot_bmn.pro` (`/chi`/`/width` modes) — unlike the surfmn contour plots.
 
 **Cross-file invariants to preserve:**
 - `phase_grid_size(n_tor, d_phase)` (in `phase_grid.py`) is the single source of truth for grid size and is
@@ -73,6 +83,25 @@ This is the core, multi-file pipeline in the repo. Stages, in order:
   spectrum independently and diffs it against an IDL-generated reference NetCDF (`bmn_vac.nc`/`bmn_res.nc`).
   Keep it in sync if `flare_surfmn.py`'s normalization ever changes, since it's the only record of *why*
   the current formula is correct.
+- `flare_surfmn.py`'s `.npz` also carries `area_res`, `qprime_res` (both per resonant surface, from
+  `fluxsurf_params()`) and `psiprime` (a single scalar per model — `psiN` is linear in poloidal flux, so
+  `d(poloidal flux)/dpsiN` is constant — fetched as `equi2d.poloidal_flux`, **not** divided by `2*pi`: IDL's
+  own `island_widths.pro` divides by `2*pi` only because its `flux_pol` array is itself pre-multiplied by
+  `2*pi` in `flux_coordinates.pro`, which FLARE's `poloidal_flux` is not; dividing again here would double
+  that cancellation — confirmed empirically against a real IDL run, see `validate_chirikov.py`). These three
+  keys are what `flare_chirikov.py` needs and are the only reason `flare_surfmn.py`'s `.npz` schema and
+  `fluxsurf_params()`'s return signature grew past the original 6-tuple/8-key set.
+- `validate_chirikov.py` is `flare_chirikov.py`'s counterpart to `validate_surfmn.py`: it diffs the ported
+  island-width/Chirikov formula against real IDL `island_widths.pro` output (`chirikov.pro` itself cannot be
+  called directly under modern IDL — its `if(width eq 0)` error-sentinel check errors out on a real,
+  multi-element success array; reproduce its documented formula from `island_widths.pro`'s output instead,
+  as the validation driver script does). Validated on `shot0009/n3/single_fluid/coil_sets_1kAt/IM_set_000`
+  (n_tor=3): once the FLARE model's `timeslice` matches the M3D-C1 timeslice IDL's `plot_br.pro` actually
+  read (its `slice` keyword defaults to the *last* available slice, not slice 0 — a real footgun when
+  hand-building a `.bfield` for validation, since `flare_model_gen.py` always takes `timeslice` explicitly
+  from the caller so this doesn't bite production phase-map runs), geometric quantities (`q`, `area`, `psiN`,
+  `psiprime`) agree with IDL to <0.2%, and the final Chirikov parameter agrees to ~1% RMS (median 0.5%, max
+  2.6%) across the RMP-relevant edge region.
 
 ### Other, independent tools
 

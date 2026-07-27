@@ -2,11 +2,13 @@
 """Validate flare_surfmn.py against IDL's plot_br.pro/schaffer_plot.pro reference
 NetCDF output (bmn_vac.nc / bmn_res.nc), for a single response_probeg-style case.
 
-Corrected normalization derived+validated against IDL (see project notes):
+Corrected normalization derived+validated against IDL (see project notes),
+already implemented in flare_surfmn.py's db_matrix (do not "simplify" it
+without reading this docstring first):
 
     Bmn [G] = 2 * (2*pi)^2 * |Phi_mn(psi_norm)| / area(psi_norm) * 1e4
 
-replacing flare_surfmn.py's original (buggy):
+This replaced an earlier, incorrect version of flare_surfmn.py's formula:
 
     db_matrix = |Phi_mn| * area * 1e4
 
@@ -67,7 +69,8 @@ def compute_case(flare_model_dir: str, nc_path: str, n_tor: int, m_max_lowres: i
     model.load(flare_model_dir)
     try:
         t0 = time.time()
-        psiN_lr, q_lr, area_lr, psiN_res, q_res = fluxsurf_params(n_tor, m_max_lowres)
+        (psiN_lr, q_lr, area_lr, psiN_res, q_res, m_res,
+         area_res, qprime_res) = fluxsurf_params(n_tor, m_max_lowres)
         m_lr = np.arange(-(m_max_lowres + 1) + 1, (m_max_lowres + 1) + 1)
         db_lr = np.zeros((len(psiN_lr), len(m_lr)))
         for i, psiN in enumerate(psiN_lr):
