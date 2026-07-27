@@ -68,20 +68,22 @@ cd n<mode>/<fluid_model>/coil_sets_1kAt/<COILSET>_set_000
 ./clear_links     # remove the shared-data symlinks when done
 ```
 
-Each of the `4 (n) × 2 (fluid) × 6 (coil set) = 48` cases is still launched individually — there's no
-aggregate script to submit the whole scan at once, only to generate/validate the case directories
-(see below).
+Each case can still be launched individually this way. For driving the whole `4 (n) × 2 (fluid) ×
+6 (coil set) = 48`-case scan at once from a local analysis machine over SSH, see `tools/remote_run.py`
+below — it wraps exactly this `make_links` → `sbatch batch_script.response` → (wait) → collect-output
+cycle, batched across cases.
 
-## `tools/` — scenario generator and validator
+## `tools/` — scenario generator, validator, and remote execution
 
 This tree (and any future scenario tree for a different shot) is produced and checked by
 `tools/generate_scenario.py`, a stdlib-only Python CLI:
 
 ```bash
-# (Re)generate a scenario from its config. Existing case directories are left alone unless --force
-# is given, in which case only the 8 known input files are re-rendered — run.log/*.h5/symlinks and
-# any other solver output are never touched.
-python3 tools/generate_scenario.py init --config scenario.json --output-dir <path> [--force]
+# (Re)generate a scenario from its config. --config defaults to ./scenario.json, --output-dir to
+# the current directory, so `init` with no flags works when run from a tree's root. Existing case
+# directories are left alone unless --force is given, in which case only the 8 known input files
+# are re-rendered — run.log/*.h5/symlinks and any other solver output are never touched.
+python3 tools/generate_scenario.py init [--config scenario.json] [--output-dir <path>] [--force]
 
 # Check a scenario tree for consistency: unique SLURM job names, rmp_coil.dat/rmp_current.dat
 # matching the reference geometry/current patterns, C1input's ntor/ipres/db_fac matching their
@@ -109,3 +111,66 @@ python3 tools/generate_scenario.py validate --path <path>
 To start a new scenario (e.g. a different shot number), write a new `scenario.json` (at minimum
 `shot`, `shared_data_dir`, `executable`, `run`, `slurm`) and run `init` with `--output-dir` pointed
 at wherever that scenario should live — there's no fixed path convention baked into the tool.
+
+### `tools/remote_run.py` — driving the cluster over SSH from a local scenario tree
+
+Lets the generated tree live on a local analysis machine as the source of truth, and pushes/submits/
+monitors/pulls/cleans cases on the HPC cluster over SSH (key-based, non-interactive — no MFA/jump-host
+handling built in) instead of the older manual workflow of submitting on the cluster and tarring
+results back by hand. Five subcommands, each mirroring `validate`'s `--path` (default `.`) plus a
+`--cases` selector (comma-separated `fnmatch` globs against case relpaths, e.g.
+`n1/*/coil_sets_1kAt/CPL_set_000`; omitted = all 48 cases — batching is purely a connection-count
+optimization for whatever subset is selected, not a requirement to operate on the whole tree at once;
+a single case is just a batch of size one):
+
+```bash
+# Push the 8 known input files for the selected cases to the cluster, and run ./make_links
+# remotely for any case not yet linked there (ln -s isn't idempotent, so this is tracked in
+# .remote_state.json rather than re-run blindly). Never touches remote-side solver output.
+python3 tools/remote_run.py push --path <path> [--cases <selector>] [--force-relink] [--dry-run]
+
+# sbatch batch_script.response remotely for the selected cases, recording the returned SLURM
+# job ID per case. Skips (reports, doesn't error) any case with a non-terminal job already
+# tracked, unless --force.
+python3 tools/remote_run.py submit --path <path> [--cases <selector>] [--force] [--dry-run]
+
+# Query sacct/squeue for the tracked job IDs and print each case's SLURM state plus a summary
+# count (completed/failed/in flight/not submitted).
+python3 tools/remote_run.py status --path <path> [--cases <selector>]
+
+# rsync back C1stdout/*.h5/C1ke/normcurv/*out/profiles* for cases whose last known state is
+# COMPLETED (or any tracked case with --all), into the matching local case directory.
+python3 tools/remote_run.py pull --path <path> [--cases <selector>] [--all] [--dry-run]
+
+# Run ./rmall remotely (the same per-case cleanup script used locally) to remove solver output
+# on the cluster, freeing scratch space. Default: only cases confirmed COMPLETED and already
+# pulled locally (--force bypasses that, e.g. to clean a FAILED case with nothing worth keeping).
+# Always refuses a case whose job is still non-terminal (RUNNING/PENDING/...), even with --force,
+# since rmall would delete output files an active job is still writing. Inputs/symlinks are left
+# in place, so a cleaned case is still ready to resubmit without re-push/re-link.
+python3 tools/remote_run.py clean --path <path> [--cases <selector>] [--force] [--dry-run]
+```
+
+This requires a `"cluster"` block in `scenario.json`, in addition to the keys `generate_scenario.py`
+itself needs (which ignores `cluster` entirely):
+
+```json
+"cluster": {
+  "host": "<ssh-alias-or-user@hostname, key-based/non-interactive>",
+  "remote_base_dir": "/scratch/.../scenario_runs",
+  "user": "<remote-username, used for readable status output only>"
+}
+```
+
+State — SLURM job ID, link status, last-known job state per case — is cached in
+`<scenario-root>/.remote_state.json` (one file for the whole tree). It's a local cache, not source
+data: safe to inspect, not meant to be hand-edited, and deleting it while jobs are in flight loses the
+case→job-ID mapping (`status`/`pull` will no longer know what to check or fetch), though the jobs
+themselves keep running on the cluster unaffected. It also records which `cluster.host`/
+`remote_base_dir` it was populated against, and refuses to reuse cached job IDs if `scenario.json`'s
+`cluster` block later points somewhere else.
+
+`push`, `submit`, and `clean` batch every selected case into a single ssh round trip (rather than one
+connection per case) since ssh handshake overhead is non-negligible across 48 cases; `pull` is the one
+exception, running one rsync per eligible case, since rsync's glob-matching `--include`/`--exclude`
+filters can't be cheaply scoped to an arbitrary subset of case directories in one call.

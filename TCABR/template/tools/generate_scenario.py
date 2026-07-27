@@ -48,6 +48,7 @@ EXECUTABLE_FILES = {"run", "make_links", "clear_links", "rmall"}
 RMALL_CONTENT = "rm -rf C1ke normcurv *out profiles* *.h5\n"
 
 MAKE_LINKS_LINE_RE = re.compile(r"^ln -s \{shared_data_dir\}/(\S+) \.$", re.MULTILINE)
+JOB_NAME_LINE_RE = re.compile(r"^#SBATCH -J (\S+)$", re.MULTILINE)
 
 
 def linked_item_names():
@@ -274,7 +275,7 @@ def cmd_validate(args):
             c1input_bodies[sha1(normalized)].add(rel)
 
         batch = (path / "batch_script.response").read_text()
-        job_m = re.search(r"^#SBATCH -J (\S+)$", batch, re.MULTILINE)
+        job_m = JOB_NAME_LINE_RE.search(batch)
         if not job_m:
             issues.append(f"{rel}: could not locate #SBATCH -J in batch_script.response")
         else:
@@ -326,8 +327,8 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_init = sub.add_parser("init", help="generate (or extend) a scenario tree from a config")
-    p_init.add_argument("--config", required=True, help="path to scenario.json")
-    p_init.add_argument("--output-dir", required=True, help="root directory of the scenario tree")
+    p_init.add_argument("--config", default="scenario.json", help="path to scenario.json (default: scenario.json)")
+    p_init.add_argument("--output-dir", default=".", help="root directory of the scenario tree (default: .)")
     p_init.add_argument("--force", action="store_true",
                          help="re-render input files for cases that already exist "
                               "(never touches run.log, *.h5, symlinks, or other solver output)")

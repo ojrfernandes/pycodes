@@ -135,14 +135,20 @@ This is the core, multi-file pipeline in the repo. Stages, in order:
 
 ### `template/` — M3D-C1 scenario-tree generator (not a root CLI script)
 
-Master copy of the kit that generates and validates the M3D-C1 RMP-response run-case trees (the
-`n<mode>/<fluid_model>/coil_sets_<kAt>kAt/<coil_set>_set_<index>/` parameter scans that live on the
-cluster, *not* in this repo). Contents: `tools/generate_scenario.py` (stdlib-only CLI with `init` and
-`validate` subcommands), `tools/templates/*.template` (the per-case `C1input`, `run`, `make_links`,
-SLURM script bodies), `tools/reference_data/` (fixed RMP coil geometry and per-coil-set current
-patterns), and `scenario.json` (the shot0009 config). `template/CLAUDE.md` documents the generated
-tree's directory/file conventions and workflow — it is copied along with the kit into each generated
-scenario tree, so keep it in sync with `generate_scenario.py` when editing either.
+Master copy of the kit that generates, validates, and (optionally) remotely runs the M3D-C1
+RMP-response run-case trees (the `n<mode>/<fluid_model>/coil_sets_<kAt>kAt/<coil_set>_set_<index>/`
+parameter scans, generated wherever `--output-dir` points — not necessarily in this repo). Contents:
+`tools/generate_scenario.py` (stdlib-only CLI with `init` and `validate` subcommands),
+`tools/remote_run.py` (stdlib-only CLI with `push`/`submit`/`status`/`pull` subcommands that drive a
+generated tree's cases on an HPC cluster over SSH — push inputs, `sbatch` them, poll SLURM state, pull
+solver output back — so the tree's canonical copy can live on a local analysis machine instead of the
+cluster filesystem; tracks job IDs/link status in a generated `.remote_state.json`), `tools/templates/
+*.template` (the per-case `C1input`, `run`, `make_links`, SLURM script bodies), `tools/reference_data/`
+(fixed RMP coil geometry and per-coil-set current patterns), and `scenario.json` (the shot0009 config,
+now including an optional `cluster` block consumed only by `remote_run.py`). `template/CLAUDE.md`
+documents the generated tree's directory/file conventions and workflow — it is copied along with the
+kit into each generated scenario tree, so keep it in sync with `generate_scenario.py`/`remote_run.py`
+when editing any of them.
 
 ## Conventions across the codebase
 

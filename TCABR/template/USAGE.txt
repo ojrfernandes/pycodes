@@ -1,0 +1,51 @@
+M3D-C1 SCENARIO-TREE WORKFLOW
+==============================
+
+1. GENERATE THE TREE
+
+   cd <scenario-root>            # where scenario.json lives
+   python3 tools/generate_scenario.py init
+   python3 tools/generate_scenario.py validate
+
+2. RUN LOCALLY (single case)
+
+   cd n<mode>/<fluid_model>/coil_sets_<kAt>kAt/<coil_set>_set_<index>
+   ./make_links
+   ./run
+   ./rmall            # reset before rerunning
+   ./clear_links       # remove shared-data symlinks when done
+
+3. RUN REMOTELY OVER SSH (whole tree, driven from here)
+
+   Requires cluster.host/remote_base_dir/user set in scenario.json,
+   and cluster.host reachable via ssh (see ~/.ssh/config).
+
+   python3 tools/remote_run.py push   [--cases <selector>]
+   python3 tools/remote_run.py submit [--cases <selector>]
+   python3 tools/remote_run.py status [--cases <selector>]
+   python3 tools/remote_run.py pull   [--cases <selector>]
+   python3 tools/remote_run.py clean  [--cases <selector>]
+
+   --cases is a comma-separated fnmatch selector over case relpaths,
+   e.g. --cases 'n1/*/coil_sets_1kAt/CPL_set_000'. Omit for all cases.
+
+   Typical loop:
+     push      -> pushes inputs, runs make_links remotely
+     submit    -> sbatch's each case, records job_id
+     status    -> repeat until all cases report COMPLETED
+     pull      -> rsyncs C1stdout/*.h5/etc. back into the local tree
+     clean     -> runs ./rmall remotely to free cluster scratch space
+
+   Add --dry-run to push/submit/pull/clean to preview without touching
+   the network.
+
+4. RE-RUN A CASE
+
+   Local:
+     ./rmall && ./run
+
+   Remote:
+     python3 tools/remote_run.py clean  --cases <selector> --force
+     python3 tools/remote_run.py submit --cases <selector> --force
+
+FULL DETAILS: see CLAUDE.md.

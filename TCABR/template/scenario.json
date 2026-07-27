@@ -36,5 +36,10 @@
     "nodes": 1,
     "ntasks": 48,
     "time": "00:20:00"
+  },
+  "cluster": {
+    "host": "cluster-tunnel",
+    "remote_base_dir": "/scratch/ntm/jose.fernandes/scenario_runs",
+    "user": "jose.fernandes"
   }
 }
