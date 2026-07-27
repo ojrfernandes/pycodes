@@ -1,5 +1,6 @@
 #!/home/jfernandes/.venv/bin/python
 import os
+import glob
 import argparse
 import sys
 import subprocess
@@ -9,8 +10,45 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from phase_grid import phase_grid_size
 
 
+def _build_tasks(model_path: str, save_to_path: str, n_tor: int, m_max: int, d_phase: int, n_pol: int,
+                  force: bool) -> list:
+    """
+    Existing-output guard, save_to_path/logs setup, and (phase_L, phase_U) task-tuple
+    construction for one (model_path, save_to_path) job -- shared by flare_phase_map()
+    and flare_phase_map_queue.py, which combines tasks from several such jobs into one
+    worker pool.
+
+    Returns
+    -------
+    list of tuple
+        (model_path, save_to_path, n_tor, m_max, phase_L, phase_U, n_pol) per grid point.
+    """
+    n_elements = phase_grid_size(n_tor, d_phase)
+
+    existing = glob.glob(os.path.join(save_to_path, "dephase_*.npz"))
+    if existing and not force:
+        raise FileExistsError(
+            f"{len(existing)} dephase_*.npz file(s) already exist in '{save_to_path}' "
+            "from a previous run. Use force=True (or --force on the CLI) to overwrite them, "
+            "or choose a different save_to_path."
+        )
+    elif existing and force:
+        print(f"Warning: overwriting {len(existing)} existing .npz file(s) in '{save_to_path}'.")
+
+    if not os.path.exists(save_to_path):
+        os.makedirs(save_to_path)
+    if not os.path.exists(os.path.join(save_to_path, "logs")):
+        os.makedirs(os.path.join(save_to_path, "logs"))
+
+    return [
+        (model_path, save_to_path, n_tor, m_max, i * d_phase, j * d_phase, n_pol)
+        for i in range(n_elements)
+        for j in range(n_elements)
+    ]
+
+
 def flare_phase_map(model_path: str, save_to_path: str, n_tor: int, m_max: int, d_phase: int=10, nprocs: int=1,
-                     n_pol: int=400) -> None:
+                     n_pol: int=400, force: bool=False) -> None:
     """
     Run flare_surfmn over a grid of phase_L and phase_U values to generate a phase map.
 
@@ -31,6 +69,10 @@ def flare_phase_map(model_path: str, save_to_path: str, n_tor: int, m_max: int, 
     n_pol : int
         Poloidal Fourier transform resolution passed through to flare_surfmn,
         decoupled from m_max. Default is 400 (see flare_surfmn.py).
+    force : bool
+        If False (default) and save_to_path already contains dephase_*.npz files
+        from a previous run, abort before launching any task. If True, proceed
+        and overwrite them.
 
     Returns
     -------
@@ -38,19 +80,7 @@ def flare_phase_map(model_path: str, save_to_path: str, n_tor: int, m_max: int, 
         Saves surfmn data in .npz files in the specified directory.
     """
 
-    n_elements = phase_grid_size(n_tor, d_phase)
-
-    if not os.path.exists(save_to_path):
-        os.makedirs(save_to_path)
-    if not os.path.exists(os.path.join(save_to_path, "logs")):
-        os.makedirs(os.path.join(save_to_path, "logs"))
-
-    # Prepare task list
-    tasks = [
-        (model_path, save_to_path, n_tor, m_max, i * d_phase, j * d_phase, n_pol)
-        for i in range(n_elements)
-        for j in range(n_elements)
-    ]
+    tasks = _build_tasks(model_path, save_to_path, n_tor, m_max, d_phase, n_pol, force)
 
     print(f"\nLaunching {len(tasks)} evaluations using {nprocs} processes...")
 
@@ -126,6 +156,8 @@ if __name__ == "__main__":
     parser.add_argument("--nprocs", type=int, default=1, help="Number of parallel processes. Default is 1.")
     parser.add_argument("--n_pol", type=int, default=400,
                          help="Poloidal Fourier transform resolution passed to flare_surfmn (default: 400).")
+    parser.add_argument("--force", action="store_true",
+                         help="Overwrite existing .npz output files in save_to_path.")
 
     args = parser.parse_args()
 
@@ -136,5 +168,6 @@ if __name__ == "__main__":
         args.m_max,
         args.d_phase,
         args.nprocs,
-        args.n_pol
+        args.n_pol,
+        args.force
     )
