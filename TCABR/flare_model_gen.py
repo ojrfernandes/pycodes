@@ -5,7 +5,8 @@ import numpy as np
 
 from phase_grid import phase_grid_size
 
-def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: str, timeslice: int, boundary: str=None, amplitudes: list=[1.0,1.0,1.0], flare_phase: bool=True, phase_signal: list=[-1,1]) -> None:
+def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: str, timeslice: int,
+                    boundary: str | None=None, amplitudes: list=[1.0,1.0,1.0], phase_signal: list=[-1,1]) -> None:
     """
     Generate flare model files for different phase combinations of IL and IU sets.
 
@@ -27,10 +28,7 @@ def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: 
         Path to the boundary file. Default is tcabr_first_wall.txt.
     amplitudes : list of float
         Amplitudes for L, M, U sets respectively. Default is [1.0, 1.0, 1.0].
-    flare_phase : bool
-        If True, use phase 000 simulations and adjust phase in FLARE post-processing. Default is True.
     phase_signal : list of int
-        (only applies if flare_phase is True)
         Phase signal for L and U sets respectively. Default is [-1, 1].
     
     Returns
@@ -77,66 +75,35 @@ def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: 
                     f'filename: {boundary}\n' \
                     'units: m')
                 
-                if flare_phase:
-                    with open(f'{new_dir}.bfield', 'w') as file:
-                        file.write(
-                        '[equi2d_m3dc1]\n' \
-                        f'filename: {sets}IM_set_000/C1.h5\n' \
+                with open(f'{new_dir}.bfield', 'w') as file:
+                    file.write(
+                    '[equi2d_m3dc1]\n' \
+                    f'filename: {sets}IM_set_000/C1.h5\n' \
 
-                        '\n' \
-                        
-                        '[IL_set:m3dc1]\n' \
-                        f'filename:   {sets}IL_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[0]}\n' \
-                        f'phase:      {phase_IL}\n' \
-                        
-                        '\n' \
-                        
-                        '[IM_set:m3dc1]\n' \
-                        f'filename:   {sets}IM_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[1]}\n' \
-                        f'phase:      0.0\n' \
-                        
-                        '\n' \
-                        
-                        '[IU_set:m3dc1]\n' \
-                        f'filename:   {sets}IU_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[2]}\n' \
-                        f'phase:      {phase_IU}\n' \
-                        )
-                else:
-                    with open(f'{new_dir}.bfield', 'w') as file:
-                        file.write(
-                        '[equi2d_m3dc1]\n' \
-                        f'filename: {sets}IM_set_000/C1.h5\n' \
-
-                        '\n' \
-                        
-                        '[IL_set:m3dc1]\n' \
-                        f'filename:   {sets}IL_set_{phase_IL_str}/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[0]}\n' \
-                        f'phase:      0.0\n' \
-                        
-                        '\n' \
-                        
-                        '[IM_set:m3dc1]\n' \
-                        f'filename:   {sets}IM_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[1]}\n' \
-                        f'phase:      0.0\n' \
-                        
-                        '\n' \
-                        
-                        '[IU_set:m3dc1]\n' \
-                        f'filename:   {sets}IU_set_{phase_IU_str}/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[2]}\n' \
-                        f'phase:      0.0' \
-                        )
+                    '\n' \
+                    
+                    '[IL_set:m3dc1]\n' \
+                    f'filename:   {sets}IL_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[0]}\n' \
+                    f'phase:      {phase_IL}\n' \
+                    
+                    '\n' \
+                    
+                    '[IM_set:m3dc1]\n' \
+                    f'filename:   {sets}IM_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[1]}\n' \
+                    f'phase:      0.0\n' \
+                    
+                    '\n' \
+                    
+                    '[IU_set:m3dc1]\n' \
+                    f'filename:   {sets}IU_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[2]}\n' \
+                    f'phase:      {phase_IU}\n' \
+                    )
 
     if coils == 'CP':
         for i in range(n_models):
@@ -159,66 +126,36 @@ def flare_model_gen(coils: str, directory: str, n_tor: int, d_phase: int, sets: 
                     f'filename: {boundary}\n' \
                     'units: m')
 
-                if flare_phase:
-                    with open(f'{new_dir}.bfield', 'w') as file:
-                        file.write(
-                        '[equi2d_m3dc1]\n' \
-                        f'filename: {sets}CPM_set_000/C1.h5\n' \
+                with open(f'{new_dir}.bfield', 'w') as file:
+                    file.write(
+                    '[equi2d_m3dc1]\n' \
+                    f'filename: {sets}CPM_set_000/C1.h5\n' \
 
-                        '\n' \
-                        
-                        '[CPL_set:m3dc1]\n' \
-                        f'filename:   {sets}CPL_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[0]}\n' \
-                        f'phase:      {phase_CPL}\n' \
+                    '\n' \
+                    
+                    '[CPL_set:m3dc1]\n' \
+                    f'filename:   {sets}CPL_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[0]}\n' \
+                    f'phase:      {phase_CPL}\n' \
 
-                        '\n' \
-                        
-                        '[CPM_set:m3dc1]\n' \
-                        f'filename:   {sets}CPM_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[1]}\n' \
-                        f'phase:      0.0\n' \
-                        
-                        '\n' \
-                        
-                        '[CPU_set:m3dc1]\n' \
-                        f'filename:   {sets}CPU_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[2]}\n' \
-                        f'phase:      {phase_CPU}\n' \
-                        )
-                else: 
-                    with open(f'{new_dir}.bfield', 'w') as file:
-                        file.write(
-                        '[equi2d_m3dc1]\n' \
-                        f'filename: {sets}CPM_set_000/C1.h5\n' \
+                    '\n' \
+                    
+                    '[CPM_set:m3dc1]\n' \
+                    f'filename:   {sets}CPM_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[1]}\n' \
+                    f'phase:      0.0\n' \
+                    
+                    '\n' \
+                    
+                    '[CPU_set:m3dc1]\n' \
+                    f'filename:   {sets}CPU_set_000/C1.h5\n' \
+                    f'timeslice:  {timeslice}\n' \
+                    f'amplitude:  {amplitudes[2]}\n' \
+                    f'phase:      {phase_CPU}\n' \
+                    )
 
-                        '\n' \
-                        
-                        '[CPL_set:m3dc1]\n' \
-                        f'filename:   {sets}CPL_set_{phase_CPL_str}/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[0]}\n' \
-                        f'phase:      0.0\n' \
-
-                        '\n' \
-                        
-                        '[CPM_set:m3dc1]\n' \
-                        f'filename:   {sets}CPM_set_000/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[1]}\n' \
-                        f'phase:      0.0\n' \
-                        
-                        '\n' \
-                        
-                        '[CPU_set:m3dc1]\n' \
-                        f'filename:   {sets}CPU_set_{phase_CPU_str}/C1.h5\n' \
-                        f'timeslice:  {timeslice}\n' \
-                        f'amplitude:  {amplitudes[2]}\n' \
-                        f'phase:      0.0' \
-                        )
     print(f'Successfully created model files in {directory}')
 
 
@@ -232,7 +169,6 @@ if __name__ == "__main__":
     parser.add_argument('timeslice', type=int, help='Time slice to use from the M3D-C1 data.')
     parser.add_argument('--boundary', type=str, default=None, help='Path to the boundary file. Default is tcabr_first_wall.txt')
     parser.add_argument('--amplitudes', type=float, nargs=3, default=[1.0, 1.0, 1.0], help='Amplitudes for IL, IM, IU sets respectively. Default is [1.0, 1.0, 1.0]')
-    parser.add_argument('--flare_phase', action='store_true', help='If set, use phase 000 simulations and adjust phase in FLARE post-processing.')
     parser.add_argument('--phase_signal', type=int, nargs=2, default=[-1, 1], help='(only applies if phase_flare is set)\nPhase signal for IL and IU sets respectively. Default is [-1, 1]')
 
     args = parser.parse_args()
@@ -246,5 +182,4 @@ if __name__ == "__main__":
         args.timeslice,
         boundary=args.boundary,
         amplitudes=args.amplitudes,
-        flare_phase=args.flare_phase,
         phase_signal=args.phase_signal)
